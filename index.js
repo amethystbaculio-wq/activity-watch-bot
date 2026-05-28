@@ -132,4 +132,17 @@ client.once('ready', () => {
   console.log(`${client.user.tag} is online!`);
 });
 
+// weekly reminder
+const cron = require('node-cron');
+
+cron.schedule('0 22 * * 5', async () => {
+  const channel = await client.channels.fetch(CHANNEL_ID);
+
+  if (channel) {
+    channel.send('🛒 Friendly reminder to buy your weekly shop before reset!');
+  }
+}, {
+  timezone: 'Asia/Manila'
+});
+
 client.login(process.env.DISCORD_TOKEN);
