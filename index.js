@@ -40,7 +40,7 @@ const gameMessages = {
     "“my team bobo” incoming from {user} after 1 death in Dota 2",
     "bro opened Dota 2 just to experience emotional damage again 😭",
     "{user} fighting demons in SEA server once again 💀",
-    "willingly entering another 60-minute Dota 2 suffering session",
+    "{user} willingly entering another 60-minute Dota 2 suffering session",
     "{user} after dying once in Dota 2: “gg end”",
     "another monitor about to suffer because of Dota 2 😭",
     "{user} treating Dota 2 ranked like The International qualifiers",
@@ -110,14 +110,13 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
     console.log(`${member.user.tag} activity: ${activity.name} | type: ${activity.type}`);
 if (activity.type !== ActivityType.Playing) continue;
 
-    const gameName = activity.name;
-    const messages = gameMessages[gameName];
+const gameName = activity.name;
 
-    if (!messages) continue;
+const messages = gameMessages[gameName];
+if (!messages) continue;
 
-const cooldownKey = `${userId}-${gameName}`;
+const activityId = `${userId}-${gameName}`;
 const now = Date.now();
-
 if (gameName === "League of Legends") {
   const lastLeague = leagueCooldowns.get(userId);
 
@@ -126,14 +125,17 @@ if (gameName === "League of Legends") {
   }
 
   leagueCooldowns.set(userId, now);
-} else {
-  const lastTriggered = cooldowns.get(cooldownKey);
 
-  if (lastTriggered && now - lastTriggered < COOLDOWN_TIME) {
-    continue;
+} else {
+  if (cooldowns.has(activityId)) {
+    const last = cooldowns.get(activityId);
+
+    if (now - last < COOLDOWN_TIME) {
+      continue;
+    }
   }
 
-  cooldowns.set(cooldownKey, now);
+  cooldowns.set(activityId, now);
 }
 
 const randomMessage = messages[Math.floor(Math.random() * messages.length)];
