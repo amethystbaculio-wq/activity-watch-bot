@@ -22,8 +22,12 @@ const client = new Client({
 });
 
 const CHANNEL_ID = process.env.CHANNEL_ID;
+
 const cooldowns = new Map();
 const COOLDOWN_TIME = 60 * 60 * 1000; // 1 hour
+
+const leagueCooldowns = new Map();
+const LEAGUE_COOLDOWN = 3 * 60 * 60 * 1000; // 3 hours
 
 const gameMessages = {
   "Dota 2": [
@@ -53,11 +57,9 @@ const gameMessages = {
     "bro opened VALORANT just to get one-tapped again 💀 {user}",
     "{user} thinks they’re radiant again 😭",
     "another emotional damage session started by VALORANT 💀 {user}",
-    "{user} after losing pistol round: “ff”",
     "bro queueing VALORANT like VCT scouts are watching 😭 {user}",
     "{user} about to bottom frag with confidence again 💀",
     "“team diff” incoming from {user} in 3…2…1…",
-    "{user} after missing one shot: “LAG”",
     "“my crosshair off today” — {user} after going 3/17 😭",
     "bro opened VALORANT just to spectate teammates after 10 seconds 😭 {user}",
     "another “NT NT NT” incident detected from {user}",
@@ -113,14 +115,7 @@ if (activity.type !== ActivityType.Playing) continue;
 
     if (!messages) continue;
 
-    const cooldownKey = `${userId}-${gameName}`;
-    const lastTriggered = cooldowns.get(cooldownKey);
-
-    if (lastTriggered && Date.now() - lastTriggered < COOLDOWN_TIME) return;
-
-    cooldowns.set(cooldownKey, Date.now());
-
-    const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+const cooldownKey = `${userId}-${gameName}`; const lastTriggered = cooldowns.get(cooldownKey); if (gameName === "League of Legends") { const lastLeague = leagueCooldowns.get(userId); if (lastLeague && Date.now() - lastLeague < LEAGUE_COOLDOWN) { return; } leagueCooldowns.set(userId, Date.now()); } else { if (lastTriggered && Date.now() - lastTriggered < COOLDOWN_TIME) { return; } cooldowns.set(cooldownKey, Date.now()); } const randomMessage = messages[Math.floor(Math.random() * messages.length)];
     const finalMessage = randomMessage.replaceAll('{user}', `<@${userId}>`);
 
     const channel = await client.channels.fetch(CHANNEL_ID);
