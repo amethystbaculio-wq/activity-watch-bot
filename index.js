@@ -115,7 +115,28 @@ if (activity.type !== ActivityType.Playing) continue;
 
     if (!messages) continue;
 
-const cooldownKey = `${userId}-${gameName}`; const lastTriggered = cooldowns.get(cooldownKey); if (gameName === "League of Legends") { const lastLeague = leagueCooldowns.get(userId); if (lastLeague && Date.now() - lastLeague < LEAGUE_COOLDOWN) { return; } leagueCooldowns.set(userId, Date.now()); } else { if (lastTriggered && Date.now() - lastTriggered < COOLDOWN_TIME) { return; } cooldowns.set(cooldownKey, Date.now()); } const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+const cooldownKey = `${userId}-${gameName}`;
+const now = Date.now();
+
+if (gameName === "League of Legends") {
+  const lastLeague = leagueCooldowns.get(userId);
+
+  if (lastLeague && now - lastLeague < LEAGUE_COOLDOWN) {
+    continue;
+  }
+
+  leagueCooldowns.set(userId, now);
+} else {
+  const lastTriggered = cooldowns.get(cooldownKey);
+
+  if (lastTriggered && now - lastTriggered < COOLDOWN_TIME) {
+    continue;
+  }
+
+  cooldowns.set(cooldownKey, now);
+}
+
+const randomMessage = messages[Math.floor(Math.random() * messages.length)];
     const finalMessage = randomMessage.replaceAll('{user}', `<@${userId}>`);
 
     const channel = await client.channels.fetch(CHANNEL_ID);
