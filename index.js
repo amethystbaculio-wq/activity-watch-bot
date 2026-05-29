@@ -37,8 +37,6 @@ const gameMessages = {
     "🚨 {user} escaped DN for Dota 2 again",
     "{user} opened Dota 2 and the matchmaking gods started laughing.",
     "bro farming Dota 2 MMR instead of nests 😭 {user}",
-    "{user} saw “RAID tonight” and quietly opened Dota 2 💀",
-    "PT leader watching {user} queue Dota 2 instead of joining the party 💀",
     "{user} about to blame their Dota 2 teammates for the next 40 minutes",
     "{user} just logged in and already owes MMR.",
     "{user} has launched Dota 2. Teammates, stay strong.",
@@ -48,8 +46,7 @@ const gameMessages = {
     "{user} Bro opened Dota 2 and the ancient started shaking. 💀",
     "{user} another monitor about to suffer because of Dota 2 😭",
     "{user} treating Dota 2 ranked like The International qualifiers",
-    "{user} Bro opened Dota 2 and the SEA server started rubbing its hands together. 😭",
-    "{user} bro opened Dota 2 the moment raid schedule got posted 💀",
+    "{user} Bro opened Dota 2 and the SEA server started rubbing its hands together. ",
     "{user} sacrificing peace of mind for MMR again",
     "Bro chose Dota 2 over nests again. 💀 {user}",
     "another day, another Dota 2 breakdown for {user}"
