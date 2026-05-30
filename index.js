@@ -24,10 +24,10 @@ const client = new Client({
 const CHANNEL_ID = process.env.CHANNEL_ID;
 
 const cooldowns = new Map();
-const COOLDOWN_TIME = 60 * 60 * 1000; // 1 hour
+const COOLDOWN_TIME = 3 * 60 * 60 * 1000; // 3 hours
 
-const leagueCooldowns = new Map();
-const LEAGUE_COOLDOWN = 3 * 60 * 60 * 1000; // 3 hours
+const usedMessagesToday = new Map(); function getTodayKey() { return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' }); } function getRandomUnusedMessage(gameName, messages) { const today = getTodayKey(); const key = `${today}-${gameName}`; if (!usedMessagesToday.has(key)) { usedMessagesToday.set(key, new Set()); } const usedSet = usedMessagesToday.get(key); let availableMessages = messages.filter(msg => !usedSet.has(msg)); if (availableMessages.length === 0) { usedSet.clear(); availableMessages = messages; } const randomMessage = availableMessages[Math.floor(Math.random() * availableMessages.length)]; usedSet.add(randomMessage); return randomMessage; }
+
 
 const gameMessages = {
   "Dota 2": [
@@ -101,8 +101,8 @@ const gameMessages = {
     "grown adult detected playing Roblox 💀 {user}",
     "{user} fighting for their life in a Lego universe 💀",
     "bro entered Roblox and forgot adulthood exists 💀 {user}",
-    "another daycare session started by Roblox 😭",
-    "bro opened Roblox and instantly became 9 years old again 💀",
+    "{user} another daycare session started by Roblox 😭",
+    "{user} bro opened Roblox and instantly became 9 years old again 💀",
     "{user} fighting children in Roblox competitive games 😭"
   ]
 };
@@ -117,37 +117,28 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
 
   for (const activity of newPresence.activities) {
     console.log(`${member.user.tag} activity: ${activity.name} | type: ${activity.type}`);
-if (activity.type !== ActivityType.Playing) continue;
 
-const gameName = activity.name;
+    if (activity.type !== ActivityType.Playing) continue;
 
-const messages = gameMessages[gameName];
-if (!messages) continue;
+    const gameName = activity.name;
+    const messages = gameMessages[gameName];
 
-const activityId = `${userId}-${gameName}`;
-const now = Date.now();
-if (gameName === "League of Legends") {
-  const lastLeague = leagueCooldowns.get(userId);
+    if (!messages) continue;
 
-  if (lastLeague && now - lastLeague < LEAGUE_COOLDOWN) {
-    continue;
-  }
+    const activityId = `${userId}-${gameName}`;
+    const now = Date.now();
 
-  leagueCooldowns.set(userId, now);
+    if (cooldowns.has(activityId)) {
+      const last = cooldowns.get(activityId);
 
-} else {
-  if (cooldowns.has(activityId)) {
-    const last = cooldowns.get(activityId);
-
-    if (now - last < COOLDOWN_TIME) {
-      continue;
+      if (now - last < COOLDOWN_TIME) {
+        continue;
+      }
     }
-  }
 
-  cooldowns.set(activityId, now);
-}
+    cooldowns.set(activityId, now);
 
-const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+    const randomMessage = getRandomUnusedMessage(gameName, messages);
     const finalMessage = randomMessage.replaceAll('{user}', `<@${userId}>`);
 
     const channel = await client.channels.fetch(CHANNEL_ID);
