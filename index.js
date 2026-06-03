@@ -11,13 +11,23 @@ app.listen(process.env.PORT || 3000, () => {
   console.log('Web server is running.');
 });
 
-const { Client, GatewayIntentBits, ActivityType } = require('discord.js');
+const {
+  Client,
+  GatewayIntentBits,
+  ActivityType,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  EmbedBuilder
+} = require('discord.js');
 
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildPresences
+    GatewayIntentBits.GuildPresences,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
   ]
 });
 
@@ -229,6 +239,8 @@ const gameMessages = {
   ]
 };
 
+const parties = new Map();
+
 client.on('presenceUpdate', async (oldPresence, newPresence) => {
   if (!newPresence || !newPresence.activities) return;
 
@@ -268,6 +280,86 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
   }
 });
 
+client.on('messageCreate', async message => {
+  if (message.author.bot) return;
+
+  if (!message.content.startsWith('-party ')) return;
+
+  const title = message.content.slice(7).trim();
+
+  if (!title) {
+    return message.reply('Please provide a party title.');
+  }
+
+  const embed = new EmbedBuilder()
+    .setTitle(title)
+    .setDescription(
+`<t:${Math.floor(Date.now() / 1000)}:D>
+
+Tank: —
+Healer: —
+DPS: —
+DPS: —
+DPS: —
+DPS: —
+DPS: —
+DPS: —
+
+0/8
+
+Created by: ${message.author}`
+    );
+
+  const buttons = new ActionRowBuilder()
+    .addComponents(
+      new ButtonBuilder()
+        .setCustomId('join_tank')
+        .setLabel('Join as Tank')
+        .setStyle(ButtonStyle.Primary),
+
+      new ButtonBuilder()
+        .setCustomId('join_healer')
+        .setLabel('Join as Healer')
+        .setStyle(ButtonStyle.Success),
+
+      new ButtonBuilder()
+        .setCustomId('join_dps')
+        .setLabel('Join as DPS')
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+  const controls = new ActionRowBuilder()
+    .addComponents(
+      new ButtonBuilder()
+        .setCustomId('leave_party')
+        .setLabel('Leave')
+        .setStyle(ButtonStyle.Secondary),
+
+      new ButtonBuilder()
+        .setCustomId('party_full')
+        .setLabel('Full')
+        .setStyle(ButtonStyle.Danger),
+
+      new ButtonBuilder()
+        .setCustomId('party_delete')
+        .setLabel('Delete')
+        .setStyle(ButtonStyle.Danger)
+    );
+
+  const sent = await message.channel.send({
+    embeds: [embed],
+    components: [buttons, controls]
+  });
+
+  parties.set(sent.id, {
+    creatorId: message.author.id,
+    title,
+    tank: null,
+    healer: null,
+    dps: []
+  });
+});
+
 client.once('ready', () => {
   console.log(`${client.user.tag} is online!`);
 });
@@ -284,5 +376,8 @@ cron.schedule('0 22 * * 5', async () => {
 }, {
   timezone: 'Asia/Manila'
 });
+
+
+
 
 client.login(process.env.DISCORD_TOKEN);
