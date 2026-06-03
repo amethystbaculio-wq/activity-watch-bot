@@ -18,7 +18,8 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  EmbedBuilder
+  EmbedBuilder,
+StringSelectMenuBuilder
 } = require('discord.js');
 
 const client = new Client({
@@ -358,6 +359,85 @@ Created by: ${message.author}`
     healer: null,
     dps: []
   });
+});
+
+client.on('interactionCreate', async interaction => {
+  if (!interaction.isButton()) return;
+
+  const party = parties.get(interaction.message.id);
+  if (!party) return;
+
+  if (interaction.customId === 'join_tank') {
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId(`select_tank_${interaction.message.id}`)
+      .setPlaceholder('Select your Tank class')
+      .addOptions(
+  { label: 'Crusader', value: 'Crusader' },
+  { label: 'Destroyer', value: 'Destroyer' },
+  { label: 'Guardian', value: 'Guardian' }
+);
+
+    return interaction.reply({
+      content: 'Select your Tank class:',
+      components: [new ActionRowBuilder().addComponents(menu)],
+      ephemeral: true
+    });
+  }
+
+  if (interaction.customId === 'join_healer') {
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId(`select_healer_${interaction.message.id}`)
+      .setPlaceholder('Select your Healer class')
+     .addOptions(
+  { label: 'Inquisitor', value: 'Inquisitor' },
+  { label: 'Physician', value: 'Physician' },
+  { label: 'Saint', value: 'Saint' }
+);
+
+    return interaction.reply({
+      content: 'Select your Healer class:',
+      components: [new ActionRowBuilder().addComponents(menu)],
+      ephemeral: true
+    });
+  }
+
+  if (interaction.customId === 'join_dps') {
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId(`select_dps_${interaction.message.id}`)
+      .setPlaceholder('Select your DPS class')
+      .addOptions(
+  { label: 'Adept', value: 'Adept' },
+  { label: 'Artillery', value: 'Artillery' },
+  { label: 'Barbarian', value: 'Barbarian' },
+  { label: 'Blade Dancer', value: 'Blade Dancer' },
+  { label: 'Crusader', value: 'Crusader' },
+  { label: 'Dark Avenger', value: 'Dark Avenger' },
+  { label: 'Dark Summoner', value: 'Dark Summoner' },
+  { label: 'Destroyer', value: 'Destroyer' },
+  { label: 'Elestra', value: 'Elestra' },
+  { label: 'Gear Master', value: 'Gear Master' },
+  { label: 'Gladiator', value: 'Gladiator' },
+  { label: 'Guardian', value: 'Guardian' },
+  { label: 'Inquisitor', value: 'Inquisitor' },
+  { label: 'Majesty', value: 'Majesty' },
+  { label: 'Moonlord', value: 'Moonlord' },
+  { label: 'Physician', value: 'Physician' },
+  { label: 'Saleana', value: 'Saleana' },
+  { label: 'Shooting Star', value: 'Shooting Star' },
+  { label: 'Smasher', value: 'Smasher' },
+  { label: 'Sniper', value: 'Sniper' },
+  { label: 'Soul Eater', value: 'Soul Eater' },
+  { label: 'Spirit Dancer', value: 'Spirit Dancer' },
+  { label: 'Tempest', value: 'Tempest' },
+  { label: 'Windwalker', value: 'Windwalker' }
+);
+
+    return interaction.reply({
+      content: 'Select your DPS class:',
+      components: [new ActionRowBuilder().addComponents(menu)],
+      ephemeral: true
+    });
+  }
 });
 
 client.once('ready', () => {
