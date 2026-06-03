@@ -352,40 +352,75 @@ Created by: ${message.author}`
     components: [buttons, controls]
   });
 
-  parties.set(sent.id, {
-    creatorId: message.author.id,
-    title,
-    tank: null,
-    healer: null,
-    dps: []
-  });
+ parties.set(sent.id, {
+  creatorId: message.author.id,
+  title,
+  date: Math.floor(Date.now() / 1000),
+  tank: null,
+  healer: null,
+  dps: [],
+  full: false
 });
+
+});
+
+function buildPartyEmbed(party) {
+  const filled =
+    (party.tank ? 1 : 0) +
+    (party.healer ? 1 : 0) +
+    party.dps.length;
+
+  const dpsLines = [];
+  for (let i = 0; i < 6; i++) {
+    dpsLines.push(`DPS: ${party.dps[i] || '—'}`);
+  }
+
+  return new EmbedBuilder()
+    .setTitle(party.full ? `${party.title} [FULL]` : party.title)
+    .setDescription(
+`<t:${party.date}:D>
+
+Tank: ${party.tank || '—'}
+Healer: ${party.healer || '—'}
+${dpsLines.join('\n')}
+
+${party.full ? 'FULL' : `${filled}/8`}
+
+Created by: <@${party.creatorId}>`
+    );
+}
 
 client.on('interactionCreate', async interaction => {
   if (!interaction.isButton() && !interaction.isStringSelectMenu()) return;
 
-   if (interaction.isStringSelectMenu()) {
+  if (interaction.isStringSelectMenu()) {
     const parts = interaction.customId.split('_');
     const role = parts[1];
     const messageId = parts[2];
 
     const party = parties.get(messageId);
-    if (!party) return;
+    if (!party) return interaction.update({ content: 'Party not found.', components: [] });
+
+    if (party.full) {
+      return interaction.update({
+        content: 'This party is already marked as full.',
+        components: []
+      });
+    }
 
     const selectedClass = interaction.values[0];
     const userId = interaction.user.id;
     const userEntry = `<@${userId}> (${selectedClass})`;
 
-    // remove user from old slot first
     if (party.tank && party.tank.includes(userId)) party.tank = null;
     if (party.healer && party.healer.includes(userId)) party.healer = null;
     party.dps = party.dps.filter(player => !player.includes(userId));
 
     if (role === 'tank') {
       if (party.tank) {
-        return interaction.reply({
-          content: 'Tank slot is already filled.',
-          ephemeral: true
+        return interaction.update({
+          content: 'Tank slot is already filled. Please join as DPS instead if you still want to join.',
+          components: []
         });
       }
       party.tank = userEntry;
@@ -393,9 +428,9 @@ client.on('interactionCreate', async interaction => {
 
     if (role === 'healer') {
       if (party.healer) {
-        return interaction.reply({
-          content: 'Healer slot is already filled.',
-          ephemeral: true
+        return interaction.update({
+          content: 'Healer slot is already filled. Please join as DPS instead if you still want to join.',
+          components: []
         });
       }
       party.healer = userEntry;
@@ -403,55 +438,38 @@ client.on('interactionCreate', async interaction => {
 
     if (role === 'dps') {
       if (party.dps.length >= 6) {
-        return interaction.reply({
+        return interaction.update({
           content: 'DPS slots are already full.',
-          ephemeral: true
+          components: []
         });
       }
       party.dps.push(userEntry);
     }
 
-    const filled =
-      (party.tank ? 1 : 0) +
-      (party.healer ? 1 : 0) +
-      party.dps.length;
+    const originalMessage = await interaction.channel.messages.fetch(messageId);
 
-    const dpsLines = [];
-    for (let i = 0; i < 6; i++) {
-      dpsLines.push(`DPS: ${party.dps[i] || '—'}`);
-    }
+    await originalMessage.edit({
+      embeds: [buildPartyEmbed(party)]
+    });
 
-    const embed = new EmbedBuilder()
-      .setTitle(party.title)
-      .setDescription(
-`<t:${Math.floor(Date.now() / 1000)}:D>
+    return interaction.update({
+      content: `You joined as ${role.toUpperCase()} (${selectedClass}).`,
+      components: []
+    });
+  }
 
-Tank: ${party.tank || '—'}
-Healer: ${party.healer || '—'}
-${dpsLines.join('\n')}
-
-${filled}/8
-
-Created by: <@${party.creatorId}>`
-      );
-
-    await interaction.update({
-  embeds: [embed],
-  components: interaction.message.components
-});
-
-return;
-}
+  const party = parties.get(interaction.message.id);
+  if (!party) return;
 
   if (interaction.customId === 'join_tank') {
     const menu = new StringSelectMenuBuilder()
       .setCustomId(`select_tank_${interaction.message.id}`)
       .setPlaceholder('Select your Tank class')
       .addOptions(
-  { label: 'Crusader', value: 'Crusader' },
-  { label: 'Destroyer', value: 'Destroyer' },
-  { label: 'Guardian', value: 'Guardian' }
-);
+        { label: 'Crusader', value: 'Crusader' },
+        { label: 'Destroyer', value: 'Destroyer' },
+        { label: 'Guardian', value: 'Guardian' }
+      );
 
     return interaction.reply({
       content: 'Select your Tank class:',
@@ -464,11 +482,11 @@ return;
     const menu = new StringSelectMenuBuilder()
       .setCustomId(`select_healer_${interaction.message.id}`)
       .setPlaceholder('Select your Healer class')
-     .addOptions(
-  { label: 'Inquisitor', value: 'Inquisitor' },
-  { label: 'Physician', value: 'Physician' },
-  { label: 'Saint', value: 'Saint' }
-);
+      .addOptions(
+        { label: 'Inquisitor', value: 'Inquisitor' },
+        { label: 'Physician', value: 'Physician' },
+        { label: 'Saint', value: 'Saint' }
+      );
 
     return interaction.reply({
       content: 'Select your Healer class:',
@@ -482,37 +500,86 @@ return;
       .setCustomId(`select_dps_${interaction.message.id}`)
       .setPlaceholder('Select your DPS class')
       .addOptions(
-  { label: 'Adept', value: 'Adept' },
-  { label: 'Artillery', value: 'Artillery' },
-  { label: 'Barbarian', value: 'Barbarian' },
-  { label: 'Blade Dancer', value: 'Blade Dancer' },
-  { label: 'Crusader', value: 'Crusader' },
-  { label: 'Dark Avenger', value: 'Dark Avenger' },
-  { label: 'Dark Summoner', value: 'Dark Summoner' },
-  { label: 'Destroyer', value: 'Destroyer' },
-  { label: 'Elestra', value: 'Elestra' },
-  { label: 'Gear Master', value: 'Gear Master' },
-  { label: 'Gladiator', value: 'Gladiator' },
-  { label: 'Guardian', value: 'Guardian' },
-  { label: 'Inquisitor', value: 'Inquisitor' },
-  { label: 'Majesty', value: 'Majesty' },
-  { label: 'Moonlord', value: 'Moonlord' },
-  { label: 'Physician', value: 'Physician' },
-  { label: 'Saleana', value: 'Saleana' },
-  { label: 'Shooting Star', value: 'Shooting Star' },
-  { label: 'Smasher', value: 'Smasher' },
-  { label: 'Sniper', value: 'Sniper' },
-  { label: 'Soul Eater', value: 'Soul Eater' },
-  { label: 'Spirit Dancer', value: 'Spirit Dancer' },
-  { label: 'Tempest', value: 'Tempest' },
-  { label: 'Windwalker', value: 'Windwalker' }
-);
+        { label: 'Adept', value: 'Adept' },
+        { label: 'Artillery', value: 'Artillery' },
+        { label: 'Barbarian', value: 'Barbarian' },
+        { label: 'Blade Dancer', value: 'Blade Dancer' },
+        { label: 'Crusader', value: 'Crusader' },
+        { label: 'Dark Avenger', value: 'Dark Avenger' },
+        { label: 'Dark Summoner', value: 'Dark Summoner' },
+        { label: 'Destroyer', value: 'Destroyer' },
+        { label: 'Elestra', value: 'Elestra' },
+        { label: 'Gear Master', value: 'Gear Master' },
+        { label: 'Gladiator', value: 'Gladiator' },
+        { label: 'Guardian', value: 'Guardian' },
+        { label: 'Inquisitor', value: 'Inquisitor' },
+        { label: 'Majesty', value: 'Majesty' },
+        { label: 'Moonlord', value: 'Moonlord' },
+        { label: 'Physician', value: 'Physician' },
+        { label: 'Saleana', value: 'Saleana' },
+        { label: 'Shooting Star', value: 'Shooting Star' },
+        { label: 'Smasher', value: 'Smasher' },
+        { label: 'Sniper', value: 'Sniper' },
+        { label: 'Soul Eater', value: 'Soul Eater' },
+        { label: 'Spirit Dancer', value: 'Spirit Dancer' },
+        { label: 'Tempest', value: 'Tempest' },
+        { label: 'Windwalker', value: 'Windwalker' }
+      );
 
     return interaction.reply({
       content: 'Select your DPS class:',
       components: [new ActionRowBuilder().addComponents(menu)],
       ephemeral: true
     });
+  }
+
+  if (interaction.customId === 'leave_party') {
+    const userId = interaction.user.id;
+
+    if (party.tank && party.tank.includes(userId)) party.tank = null;
+    if (party.healer && party.healer.includes(userId)) party.healer = null;
+    party.dps = party.dps.filter(player => !player.includes(userId));
+
+    await interaction.message.edit({
+      embeds: [buildPartyEmbed(party)]
+    });
+
+    return interaction.reply({
+      content: 'You left the party.',
+      ephemeral: true
+    });
+  }
+
+  if (interaction.customId === 'party_full') {
+    if (interaction.user.id !== party.creatorId) {
+      return interaction.reply({
+        content: 'Only the party creator can mark this as full.',
+        ephemeral: true
+      });
+    }
+
+    party.full = true;
+
+    await interaction.message.edit({
+      embeds: [buildPartyEmbed(party)]
+    });
+
+    return interaction.reply({
+      content: 'Party marked as full.',
+      ephemeral: true
+    });
+  }
+
+  if (interaction.customId === 'party_delete') {
+    if (interaction.user.id !== party.creatorId) {
+      return interaction.reply({
+        content: 'Only the party creator can delete this party.',
+        ephemeral: true
+      });
+    }
+
+    parties.delete(interaction.message.id);
+    return interaction.message.delete();
   }
 });
 
