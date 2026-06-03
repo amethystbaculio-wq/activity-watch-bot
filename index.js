@@ -459,7 +459,12 @@ client.on('interactionCreate', async interaction => {
   }
 
   const party = parties.get(interaction.message.id);
-  if (!party) return;
+if (!party) {
+  return interaction.reply({
+    content: 'This party is no longer active. Please create a new one.',
+    ephemeral: true
+  });
+}
 
   if (interaction.customId === 'join_tank') {
     const menu = new StringSelectMenuBuilder()
@@ -533,54 +538,61 @@ client.on('interactionCreate', async interaction => {
     });
   }
 
-  if (interaction.customId === 'leave_party') {
-    const userId = interaction.user.id;
+if (interaction.customId === 'leave_party') {
+  await interaction.deferReply({ ephemeral: true });
 
-    if (party.tank && party.tank.includes(userId)) party.tank = null;
-    if (party.healer && party.healer.includes(userId)) party.healer = null;
-    party.dps = party.dps.filter(player => !player.includes(userId));
+  const userId = interaction.user.id;
 
-    await interaction.message.edit({
-      embeds: [buildPartyEmbed(party)]
-    });
+  if (party.tank && party.tank.includes(userId)) party.tank = null;
+  if (party.healer && party.healer.includes(userId)) party.healer = null;
+  party.dps = party.dps.filter(player => !player.includes(userId));
 
-    return interaction.reply({
-      content: 'You left the party.',
-      ephemeral: true
-    });
-  }
+  await interaction.message.edit({
+    embeds: [buildPartyEmbed(party)]
+  });
+
+  return interaction.editReply('You left the party.');
+}
 
   if (interaction.customId === 'party_full') {
-    if (interaction.user.id !== party.creatorId) {
-      return interaction.reply({
-        content: 'Only the party creator can mark this as full.',
-        ephemeral: true
-      });
-    }
-
-    party.full = true;
-
-    await interaction.message.edit({
-      embeds: [buildPartyEmbed(party)]
-    });
-
+  if (interaction.user.id !== party.creatorId) {
     return interaction.reply({
-      content: 'Party marked as full.',
+      content: 'Only the party creator can mark this as full.',
       ephemeral: true
     });
   }
 
-  if (interaction.customId === 'party_delete') {
-    if (interaction.user.id !== party.creatorId) {
-      return interaction.reply({
-        content: 'Only the party creator can delete this party.',
-        ephemeral: true
-      });
-    }
+  party.full = !party.full;
 
-    parties.delete(interaction.message.id);
-    return interaction.message.delete();
+  await interaction.message.edit({
+    embeds: [buildPartyEmbed(party)]
+  });
+
+  return interaction.reply({
+    content: party.full
+      ? 'Party marked as full.'
+      : 'Party reopened.',
+    ephemeral: true
+  });
+}
+
+if (interaction.customId === 'party_delete') {
+  if (interaction.user.id !== party.creatorId) {
+    return interaction.reply({
+      content: 'Only the party creator can delete this party.',
+      ephemeral: true
+    });
   }
+
+  parties.delete(interaction.message.id);
+
+  await interaction.reply({
+    content: 'Party deleted.',
+    ephemeral: true
+  });
+
+  await interaction.message.delete();
+}
 });
 
 client.once('ready', () => {
