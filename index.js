@@ -281,6 +281,49 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
   }
 });
 
+function buildPartyButtons(party) {
+  const isFull = party?.full || false;
+
+  const buttons = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('join_tank')
+      .setLabel('Join as Tank')
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(isFull),
+
+    new ButtonBuilder()
+      .setCustomId('join_healer')
+      .setLabel('Join as Healer')
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(isFull),
+
+    new ButtonBuilder()
+      .setCustomId('join_dps')
+      .setLabel('Join as DPS')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(isFull)
+  );
+
+  const controls = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('leave_party')
+      .setLabel('Leave')
+      .setStyle(ButtonStyle.Secondary),
+
+    new ButtonBuilder()
+      .setCustomId('party_full')
+      .setLabel(isFull ? 'Reopen' : 'Full')
+      .setStyle(isFull ? ButtonStyle.Success : ButtonStyle.Danger),
+
+    new ButtonBuilder()
+      .setCustomId('party_delete')
+      .setLabel('Delete')
+      .setStyle(ButtonStyle.Danger)
+  );
+
+  return [buttons, controls];
+}
+
 client.on('messageCreate', async message => {
   if (message.author.bot) return;
 
@@ -349,7 +392,7 @@ Created by: ${message.author}`
 
   const sent = await message.channel.send({
     embeds: [embed],
-    components: [buttons, controls]
+    components: buildPartyButtons({ full: false })
   });
 
  parties.set(sent.id, {
@@ -557,7 +600,7 @@ if (interaction.customId === 'leave_party') {
   if (interaction.customId === 'party_full') {
   if (interaction.user.id !== party.creatorId) {
     return interaction.reply({
-      content: 'Only the party creator can mark this as full.',
+      content: 'Only the party creator can mark or reopen this party.',
       ephemeral: true
     });
   }
@@ -565,13 +608,12 @@ if (interaction.customId === 'leave_party') {
   party.full = !party.full;
 
   await interaction.message.edit({
-    embeds: [buildPartyEmbed(party)]
+    embeds: [buildPartyEmbed(party)],
+    components: buildPartyButtons(party)
   });
 
   return interaction.reply({
-    content: party.full
-      ? 'Party marked as full.'
-      : 'Party reopened.',
+    content: party.full ? 'Party marked as full.' : 'Party reopened.',
     ephemeral: true
   });
 }
