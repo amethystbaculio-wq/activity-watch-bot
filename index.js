@@ -362,10 +362,86 @@ Created by: ${message.author}`
 });
 
 client.on('interactionCreate', async interaction => {
-  if (!interaction.isButton()) return;
+  if (!interaction.isButton() && !interaction.isStringSelectMenu()) return;
 
-  const party = parties.get(interaction.message.id);
-  if (!party) return;
+   if (interaction.isStringSelectMenu()) {
+    const parts = interaction.customId.split('_');
+    const role = parts[1];
+    const messageId = parts[2];
+
+    const party = parties.get(messageId);
+    if (!party) return;
+
+    const selectedClass = interaction.values[0];
+    const userId = interaction.user.id;
+    const userEntry = `<@${userId}> (${selectedClass})`;
+
+    // remove user from old slot first
+    if (party.tank && party.tank.includes(userId)) party.tank = null;
+    if (party.healer && party.healer.includes(userId)) party.healer = null;
+    party.dps = party.dps.filter(player => !player.includes(userId));
+
+    if (role === 'tank') {
+      if (party.tank) {
+        return interaction.reply({
+          content: 'Tank slot is already filled.',
+          ephemeral: true
+        });
+      }
+      party.tank = userEntry;
+    }
+
+    if (role === 'healer') {
+      if (party.healer) {
+        return interaction.reply({
+          content: 'Healer slot is already filled.',
+          ephemeral: true
+        });
+      }
+      party.healer = userEntry;
+    }
+
+    if (role === 'dps') {
+      if (party.dps.length >= 6) {
+        return interaction.reply({
+          content: 'DPS slots are already full.',
+          ephemeral: true
+        });
+      }
+      party.dps.push(userEntry);
+    }
+
+    const filled =
+      (party.tank ? 1 : 0) +
+      (party.healer ? 1 : 0) +
+      party.dps.length;
+
+    const dpsLines = [];
+    for (let i = 0; i < 6; i++) {
+      dpsLines.push(`DPS: ${party.dps[i] || '—'}`);
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle(party.title)
+      .setDescription(
+`<t:${Math.floor(Date.now() / 1000)}:D>
+
+Tank: ${party.tank || '—'}
+Healer: ${party.healer || '—'}
+${dpsLines.join('\n')}
+
+${filled}/8
+
+Created by: <@${party.creatorId}>`
+      );
+
+    await interaction.update({
+  embeds: [embed],
+  components: interaction.message.components
+});
+
+return;
+}
 
   if (interaction.customId === 'join_tank') {
     const menu = new StringSelectMenuBuilder()
