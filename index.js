@@ -462,10 +462,16 @@ client.on('messageCreate', async message => {
       { label: '8-man', value: '8' }
     );
 
-  return message.reply({
-    content: 'Select the party size:',
-    components: [new ActionRowBuilder().addComponents(sizeMenu)]
-  });
+  const setupMessage = await message.reply({
+  content: 'Select the party size:',
+  components: [new ActionRowBuilder().addComponents(sizeMenu)]
+});
+
+setTimeout(() => {
+  setupMessage.delete().catch(() => {});
+}, 60000);
+
+return;
 });
 
 const roleLabels = {
@@ -849,6 +855,46 @@ if (
       components: []
     });
   }
+
+if (interaction.customId === 'config_skip_roles') {
+  const config = pendingPartyConfigs.get(interaction.user.id);
+
+  if (!config) {
+    return interaction.reply({
+      content: 'Configuration expired.',
+      ephemeral: true
+    });
+  }
+
+  if (interaction.user.id !== config.creatorId) {
+    return interaction.reply({
+      content: 'Only the party creator can configure this.',
+      ephemeral: true
+    });
+  }
+
+  const party = buildConfiguredParty(
+    config.title,
+    config.creatorId,
+    Number(config.size),
+    []
+  );
+
+  const channel = await client.channels.fetch(config.channelId);
+
+  const sent = await channel.send({
+    embeds: [buildConfiguredPartyEmbed(party)],
+    components: buildConfiguredPartyButtons(party)
+  });
+
+  parties.set(sent.id, party);
+  pendingPartyConfigs.delete(interaction.user.id);
+
+  return interaction.update({
+    content: 'Party created successfully.',
+    components: []
+  });
+}
 
   const party = parties.get(interaction.message.id);
 if (!party) {
