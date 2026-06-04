@@ -500,9 +500,9 @@ if (!config || interaction.user.id !== config.creatorId) {
     .addOptions(
       { label: 'Tank', value: 'tank' },
       { label: 'Healer', value: 'healer' },
-      { label: 'MC', value: 'mc' },
-      { label: 'SM', value: 'sm' },
-      { label: 'FU', value: 'fu' },
+      { label: 'Mercenary', value: 'mercenary' },
+      { label: 'Sword Master', value: 'swordmaster' },
+      { label: 'Force User', value: 'force user' },
       { label: 'Ice Stacker', value: 'ice' }
     );
 
