@@ -328,9 +328,9 @@ function buildPartyButtons(party) {
 client.on('messageCreate', async message => {
   if (message.author.bot) return;
 
-  if (!message.content.startsWith('-party ')) return;
+  if (!message.content.startsWith('-party_old ')) return;
 
-  const title = message.content.slice(7).trim();
+  const title = message.content.slice(11).trim();
 
   if (!title) {
     return message.reply('Please provide a party title.');
@@ -438,9 +438,9 @@ Created by: <@${party.creatorId}>`
 client.on('messageCreate', async message => {
   if (message.author.bot) return;
 
-  if (!message.content.startsWith('-party2 ')) return;
+  if (!message.content.startsWith('-party ')) return;
 
-  const title = message.content.slice(8).trim();
+  const title = message.content.slice(7).trim();
 
   if (!title) {
     return message.reply('Please provide a party title.');
@@ -628,9 +628,9 @@ if (interaction.user.id !== config.creatorId) {
     );
 
   const skipButton = new ButtonBuilder()
-    .setCustomId('config_skip_roles')
-    .setLabel('Skip')
-    .setStyle(ButtonStyle.Secondary);
+  .setCustomId('config_skip_roles')
+  .setLabel('Skip')
+  .setStyle(ButtonStyle.Success);
 
   return interaction.update({
     content:
