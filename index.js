@@ -609,7 +609,7 @@ if (!config || interaction.user.id !== config.creatorId) {
     .setCustomId('config_required_roles')
     .setPlaceholder('Select required roles')
     .setMinValues(1)
-    .setMaxValues(7)
+    .setMaxValues(Number(config.size))
     .addOptions(
       { label: 'Tank', value: 'tank' },
 { label: 'Healer', value: 'healer' },
@@ -649,6 +649,13 @@ if (interaction.customId === 'config_required_roles') {
 
   const selectedRoles = interaction.values;
   const size = Number(config.size);
+
+if (selectedRoles.length > size) {
+  return interaction.reply({
+    content: `A ${size}-man party can only have up to ${size} required roles.`,
+    ephemeral: true
+  });
+}
 
   const party = buildConfiguredParty(
     config.title,
