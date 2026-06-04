@@ -447,11 +447,12 @@ client.on('messageCreate', async message => {
   }
 
   pendingPartyConfigs.set(message.author.id, {
-    channelId: message.channel.id,
-    title,
-    size: null,
-    type: null
-  });
+  creatorId: message.author.id,
+  channelId: message.channel.id,
+  title,
+  size: null,
+  roles: []
+});
 
   const sizeMenu = new StringSelectMenuBuilder()
     .setCustomId('config_party_size')
@@ -475,6 +476,12 @@ client.on('interactionCreate', async interaction => {
 
 if (interaction.customId === 'config_party_size') {
   const config = pendingPartyConfigs.get(interaction.user.id);
+if (!config || interaction.user.id !== config.creatorId) {
+  return interaction.reply({
+    content: 'Only the party creator can configure this.',
+    ephemeral: true
+  });
+}
 
   if (!config) {
     return interaction.reply({
