@@ -650,12 +650,12 @@ if (interaction.customId === 'config_required_roles') {
   const selectedRoles = interaction.values;
   const size = Number(config.size);
 
-if (selectedRoles.length > size) {
-  return interaction.reply({
-    content: `A ${size}-man party can only have up to ${size} required roles.`,
-    ephemeral: true
-  });
-}
+  if (selectedRoles.length > size) {
+    return interaction.reply({
+      content: `A ${size}-man party can only have up to ${size} required roles.`,
+      ephemeral: true
+    });
+  }
 
   const party = buildConfiguredParty(
     config.title,
@@ -678,6 +678,102 @@ if (selectedRoles.length > size) {
     content: 'Party created successfully.',
     components: []
   });
+}
+
+if (interaction.customId.startsWith('custom_select_tank_')) {
+  const messageId = interaction.customId.replace('custom_select_tank_', '');
+  const party = parties.get(messageId);
+
+  if (!party) {
+    return interaction.update({
+      content: 'Party not found.',
+      components: []
+    });
+  }
+
+  const userEntry = `<@${interaction.user.id}> (${interaction.values[0]})`;
+
+  const tankSlot = party.slots.find(slot => slot.role === 'tank');
+
+  if (!tankSlot) {
+    return interaction.update({
+      content: 'Tank slot not found.',
+      components: []
+    });
+  }
+
+  if (tankSlot.user) {
+    return interaction.update({
+      content: 'Tank slot is already filled.',
+      components: []
+    });
+  }
+
+  for (const slot of party.slots) {
+    if (slot.user && slot.user.includes(interaction.user.id)) {
+      slot.user = null;
+    }
+  }
+
+  tankSlot.user = userEntry;
+
+  const originalMessage = await interaction.channel.messages.fetch(messageId);
+
+  await originalMessage.edit({
+    embeds: [buildConfiguredPartyEmbed(party)],
+    components: buildConfiguredPartyButtons(party)
+  });
+
+  return interaction.update({
+    content: `You joined as Tank (${interaction.values[0]}).`,
+    components: []
+  });
+}
+
+if (interaction.customId.startsWith('custom_select_')) {
+  const parts = interaction.customId.split('_');
+  const role = parts[2];
+  const messageId = parts.slice(3).join('_');
+
+  const party = parties.get(messageId);
+
+  if (!party) {
+    return interaction.update({
+      content: 'Party not found.',
+      components: []
+    });
+  }
+
+  const slot = party.slots.find(slot => slot.role === role && !slot.user);
+
+  if (!slot) {
+    return interaction.update({
+      content: `${roleLabels[role] || 'Slot'} is already filled.`,
+      components: []
+    });
+  }
+
+  for (const slot of party.slots) {
+    if (slot.user && slot.user.includes(interaction.user.id)) {
+      slot.user = null;
+    }
+  }
+
+  slot.user = `<@${interaction.user.id}> (${interaction.values[0]})`;
+
+  const originalMessage = await interaction.channel.messages.fetch(messageId);
+
+  await originalMessage.edit({
+    embeds: [buildConfiguredPartyEmbed(party)],
+    components: buildConfiguredPartyButtons(party)
+  });
+
+  return interaction.update({
+    content: `You joined as ${roleLabels[role]} (${interaction.values[0]}).`,
+    components: []
+  });
+}
+
 
 }
 
@@ -754,23 +850,57 @@ if (!party) {
   });
 }
 
-  if (interaction.customId === 'join_tank') {
-    const menu = new StringSelectMenuBuilder()
-      .setCustomId(`select_tank_${interaction.message.id}`)
-      .setPlaceholder('Select your Tank class')
-      .addOptions(
-        { label: 'Crusader', value: 'Crusader' },
-        { label: 'Destroyer', value: 'Destroyer' },
-        { label: 'Guardian', value: 'Guardian' }
-      );
+const customRoleClasses = {
+  healer: ['Inquisitor', 'Physician', 'Saint'],
+  mercenary: ['Barbarian', 'Destroyer'],
+  swordmaster: ['Gladiator', 'Moonlord'],
+  forceuser: ['Majesty', 'Smasher'],
+  ice: ['Adept', 'Elestra'],
+  archer: ['Acrobat', 'Artillery', 'Sniper', 'Tempest']
+};
 
-    return interaction.reply({
-      content: 'Select your Tank class:',
-      components: [new ActionRowBuilder().addComponents(menu)],
-      ephemeral: true
-    });
-  }
+if (interaction.customId.startsWith('custom_join_')) {
+  const role = interaction.customId.replace('custom_join_', '');
 
+  if (role === 'tank') return;
+
+  const classes = customRoleClasses[role];
+
+  if (!classes) return;
+
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId(`custom_select_${role}_${interaction.message.id}`)
+    .setPlaceholder(`Select your ${roleLabels[role]} class`)
+    .addOptions(
+      classes.map(className => ({
+        label: className,
+        value: className
+      }))
+    );
+
+  return interaction.reply({
+    content: `Select your ${roleLabels[role]} class:`,
+    components: [new ActionRowBuilder().addComponents(menu)],
+    ephemeral: true
+  });
+}
+
+if (interaction.customId === 'custom_join_tank') {
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId(`custom_select_tank_${interaction.message.id}`)
+    .setPlaceholder('Select your Tank class')
+    .addOptions(
+      { label: 'Crusader', value: 'Crusader' },
+      { label: 'Destroyer', value: 'Destroyer' },
+      { label: 'Guardian', value: 'Guardian' }
+    );
+
+  return interaction.reply({
+    content: 'Select your Tank class:',
+    components: [new ActionRowBuilder().addComponents(menu)],
+    ephemeral: true
+  });
+}
   if (interaction.customId === 'join_healer') {
     const menu = new StringSelectMenuBuilder()
       .setCustomId(`select_healer_${interaction.message.id}`)
