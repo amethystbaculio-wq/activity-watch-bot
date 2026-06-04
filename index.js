@@ -609,7 +609,7 @@ if (!config || interaction.user.id !== config.creatorId) {
     .setCustomId('config_required_roles')
     .setPlaceholder('Select required roles')
     .setMinValues(1)
-    .setMaxValues(Number(config.size))
+    .setMaxValues(Math.min(Number(config.size), 7))
     .addOptions(
       { label: 'Tank', value: 'tank' },
 { label: 'Healer', value: 'healer' },
