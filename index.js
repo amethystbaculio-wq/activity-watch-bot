@@ -777,7 +777,14 @@ if (interaction.customId.startsWith('custom_select_')) {
 
 }
 
-
+if (
+  interaction.isStringSelectMenu() &&
+  (
+    interaction.customId.startsWith('select_tank_') ||
+    interaction.customId.startsWith('select_healer_') ||
+    interaction.customId.startsWith('select_dps_')
+  )
+) {
     const parts = interaction.customId.split('_');
     const role = parts[1];
     const messageId = parts[2];
@@ -862,7 +869,22 @@ const customRoleClasses = {
 if (interaction.customId.startsWith('custom_join_')) {
   const role = interaction.customId.replace('custom_join_', '');
 
-  if (role === 'tank') return;
+  if (role === 'tank') {
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId(`custom_select_tank_${interaction.message.id}`)
+    .setPlaceholder('Select your Tank class')
+    .addOptions(
+      { label: 'Crusader', value: 'Crusader' },
+      { label: 'Destroyer', value: 'Destroyer' },
+      { label: 'Guardian', value: 'Guardian' }
+    );
+
+  return interaction.reply({
+    content: 'Select your Tank class:',
+    components: [new ActionRowBuilder().addComponents(menu)],
+    ephemeral: true
+  });
+}
 
   const classes = customRoleClasses[role];
 
@@ -885,22 +907,7 @@ if (interaction.customId.startsWith('custom_join_')) {
   });
 }
 
-if (interaction.customId === 'custom_join_tank') {
-  const menu = new StringSelectMenuBuilder()
-    .setCustomId(`custom_select_tank_${interaction.message.id}`)
-    .setPlaceholder('Select your Tank class')
-    .addOptions(
-      { label: 'Crusader', value: 'Crusader' },
-      { label: 'Destroyer', value: 'Destroyer' },
-      { label: 'Guardian', value: 'Guardian' }
-    );
 
-  return interaction.reply({
-    content: 'Select your Tank class:',
-    components: [new ActionRowBuilder().addComponents(menu)],
-    ephemeral: true
-  });
-}
   if (interaction.customId === 'join_healer') {
     const menu = new StringSelectMenuBuilder()
       .setCustomId(`select_healer_${interaction.message.id}`)
