@@ -911,7 +911,34 @@ const customRoleClasses = {
   forceuser: ['Majesty', 'Smasher'],
   ice: ['Adept', 'Elestra'],
   archer: ['Acrobat', 'Artillery', 'Sniper', 'Tempest'],
-  dps: ['Adept', 'Artillery', 'Barbarian', 'Blade Dancer', 'Crusader', 'Dark Avenger', 'Dark Summoner', 'Destroyer', 'Elestra', 'Gear Master', 'Gladiator', 'Guardian', 'Inquisitor', 'Majesty', 'Moonlord', 'Physician', 'Saint', 'Saleana', 'Shooting Star', 'Smasher', 'Sniper', 'Soul Eater', 'Spirit Dancer', 'Tempest', 'Windwalker']
+  dps: ['Adept', 'Artillery', 'Barbarian', 'Blade Dancer', 'Crusader', 'Dark Avenger', 'Dark Summoner', 'Destroyer', 'Elestra', 'Gear Master', 'Gladiator', 'Guardian', 'Inquisitor', 'Majesty', 'Moonlord', 'Physician', 'Saint', 'Saleana', 'Shooting Star', 'Smasher', 'Sniper', 'Soul Eater', 'Spirit Dancer', 'Tempest', 'Windwalker'],
+member: [
+  'Adept',
+  'Artillery',
+  'Barbarian',
+  'Blade Dancer',
+  'Crusader',
+  'Dark Avenger',
+  'Dark Summoner',
+  'Destroyer',
+  'Elestra',
+  'Gear Master',
+  'Gladiator',
+  'Guardian',
+  'Inquisitor',
+  'Majesty',
+  'Moonlord',
+  'Physician',
+  'Saint',
+  'Saleana',
+  'Shooting Star',
+  'Smasher',
+  'Sniper',
+  'Soul Eater',
+  'Spirit Dancer',
+  'Tempest',
+  'Windwalker'
+]
 };
 
 if (interaction.customId.startsWith('custom_join_')) {
