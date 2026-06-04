@@ -475,7 +475,9 @@ const roleLabels = {
   swordmaster: 'Sword Master',
   forceuser: 'Force User',
   ice: 'Ice Stacker',
-  archer: 'Archer'
+  archer: 'Archer',
+  dps: 'DPS',
+  member: 'Member'
 };
 
 function buildConfiguredParty(title, creatorId, size, selectedRoles) {
@@ -588,20 +590,19 @@ client.on('interactionCreate', async interaction => {
 
 if (interaction.customId === 'config_party_size') {
   const config = pendingPartyConfigs.get(interaction.user.id);
-if (!config || interaction.user.id !== config.creatorId) {
+if (!config) {
+  return interaction.reply({
+    content: 'Configuration expired.',
+    ephemeral: true
+  });
+}
+
+if (interaction.user.id !== config.creatorId) {
   return interaction.reply({
     content: 'Only the party creator can configure this.',
     ephemeral: true
   });
 }
-
-
-  if (!config) {
-    return interaction.reply({
-      content: 'Configuration expired.',
-      ephemeral: true
-    });
-  }
 
   config.size = interaction.values[0];
 
@@ -863,7 +864,8 @@ const customRoleClasses = {
   swordmaster: ['Gladiator', 'Moonlord'],
   forceuser: ['Majesty', 'Smasher'],
   ice: ['Adept', 'Elestra'],
-  archer: ['Acrobat', 'Artillery', 'Sniper', 'Tempest']
+  archer: ['Acrobat', 'Artillery', 'Sniper', 'Tempest'],
+  dps: ['Adept', 'Artillery', 'Barbarian', 'Blade Dancer', 'Crusader', 'Dark Avenger', 'Dark Summoner', 'Destroyer', 'Elestra', 'Gear Master', 'Gladiator', 'Guardian', 'Inquisitor', 'Majesty', 'Moonlord', 'Physician', 'Saint', 'Saleana', 'Shooting Star', 'Smasher', 'Sniper', 'Soul Eater', 'Spirit Dancer', 'Tempest', 'Windwalker']
 };
 
 if (interaction.customId.startsWith('custom_join_')) {
@@ -888,7 +890,12 @@ if (interaction.customId.startsWith('custom_join_')) {
 
   const classes = customRoleClasses[role];
 
-  if (!classes) return;
+  if (!classes) {
+  return interaction.reply({
+    content: 'Role not configured yet.',
+    ephemeral: true
+  });
+}
 
   const menu = new StringSelectMenuBuilder()
     .setCustomId(`custom_select_${role}_${interaction.message.id}`)
@@ -907,6 +914,61 @@ if (interaction.customId.startsWith('custom_join_')) {
   });
 }
 
+if (interaction.customId === 'custom_leave') {
+  await interaction.deferReply({ ephemeral: true });
+
+  for (const slot of party.slots) {
+    if (slot.user && slot.user.includes(interaction.user.id)) {
+      slot.user = null;
+    }
+  }
+
+  await interaction.message.edit({
+    embeds: [buildConfiguredPartyEmbed(party)],
+    components: buildConfiguredPartyButtons(party)
+  });
+
+  return interaction.editReply('You left the party.');
+}
+
+if (interaction.customId === 'custom_full') {
+  if (interaction.user.id !== party.creatorId) {
+    return interaction.reply({
+      content: 'Only the party creator can mark or reopen this party.',
+      ephemeral: true
+    });
+  }
+
+  party.full = !party.full;
+
+  await interaction.message.edit({
+    embeds: [buildConfiguredPartyEmbed(party)],
+    components: buildConfiguredPartyButtons(party)
+  });
+
+  return interaction.reply({
+    content: party.full ? 'Party marked as full.' : 'Party reopened.',
+    ephemeral: true
+  });
+}
+
+if (interaction.customId === 'custom_delete') {
+  if (interaction.user.id !== party.creatorId) {
+    return interaction.reply({
+      content: 'Only the party creator can delete this party.',
+      ephemeral: true
+    });
+  }
+
+  parties.delete(interaction.message.id);
+
+  await interaction.reply({
+    content: 'Party deleted.',
+    ephemeral: true
+  });
+
+  return interaction.message.delete();
+}
 
   if (interaction.customId === 'join_healer') {
     const menu = new StringSelectMenuBuilder()
