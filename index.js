@@ -241,6 +241,7 @@ const gameMessages = {
 };
 
 const parties = new Map();
+const pendingPartyConfigs = new Map();
 
 client.on('presenceUpdate', async (oldPresence, newPresence) => {
   if (!newPresence || !newPresence.activities) return;
@@ -433,10 +434,65 @@ Created by: <@${party.creatorId}>`
     );
 }
 
+
+client.on('messageCreate', async message => {
+  if (message.author.bot) return;
+
+  if (!message.content.startsWith('-party2 ')) return;
+
+  const title = message.content.slice(8).trim();
+
+  if (!title) {
+    return message.reply('Please provide a party title.');
+  }
+
+  pendingPartyConfigs.set(message.author.id, {
+    channelId: message.channel.id,
+    title,
+    size: null,
+    type: null
+  });
+
+  const sizeMenu = new StringSelectMenuBuilder()
+    .setCustomId('config_party_size')
+    .setPlaceholder('Select Party Size')
+    .addOptions(
+      { label: '4-man', value: '4' },
+      { label: '8-man', value: '8' }
+    );
+
+  return message.reply({
+    content: 'Select the party size:',
+    components: [new ActionRowBuilder().addComponents(sizeMenu)]
+  });
+});
+
 client.on('interactionCreate', async interaction => {
   if (!interaction.isButton() && !interaction.isStringSelectMenu()) return;
 
   if (interaction.isStringSelectMenu()) {
+
+if (interaction.customId === 'config_party_size') {
+  const config = pendingPartyConfigs.get(interaction.user.id);
+
+  if (!config) {
+    return interaction.reply({
+      content: 'Configuration expired.',
+      ephemeral: true
+    });
+  }
+
+  config.size = interaction.values[0];
+
+  return interaction.update({
+    content:
+`Party Size: ${config.size}-man
+
+Now select the party type.`,
+    components: []
+  });
+}
+
     const parts = interaction.customId.split('_');
     const role = parts[1];
     const messageId = parts[2];
