@@ -468,6 +468,118 @@ client.on('messageCreate', async message => {
   });
 });
 
+const roleLabels = {
+  tank: 'Tank',
+  healer: 'Healer',
+  mercenary: 'Mercenary',
+  swordmaster: 'Sword Master',
+  forceuser: 'Force User',
+  ice: 'Ice Stacker',
+  archer: 'Archer'
+};
+
+function buildConfiguredParty(title, creatorId, size, selectedRoles) {
+  const slots = [];
+
+  for (const role of selectedRoles) {
+    slots.push({
+      role,
+      label: roleLabels[role],
+      user: null
+    });
+  }
+
+  const remaining = size - slots.length;
+  const fillerLabel = selectedRoles.length === 0 ? 'Member' : 'DPS';
+
+  for (let i = 0; i < remaining; i++) {
+    slots.push({
+      role: selectedRoles.length === 0 ? 'member' : 'dps',
+      label: fillerLabel,
+      user: null
+    });
+  }
+
+  return {
+    creatorId,
+    title,
+    date: Math.floor(Date.now() / 1000),
+    size,
+    slots,
+    full: false,
+    type: 'custom'
+  };
+}
+
+function buildConfiguredPartyEmbed(party) {
+  const filled = party.slots.filter(slot => slot.user).length;
+
+  const lines = party.slots.map(slot => {
+    return `${slot.label}: ${slot.user || '—'}`;
+  });
+
+  return new EmbedBuilder()
+    .setTitle(party.full ? `${party.title} [FULL]` : party.title)
+    .setDescription(
+`<t:${party.date}:D>
+
+${lines.join('\n')}
+
+${party.full ? 'FULL' : `${filled}/${party.size}`}
+
+Created by: <@${party.creatorId}>`
+    );
+}
+
+function buildConfiguredPartyButtons(party) {
+  const isFull = party.full || false;
+
+  const joinButtons = [];
+
+  const uniqueRoles = [...new Set(party.slots.map(slot => slot.role))];
+
+  for (const role of uniqueRoles) {
+    const label = roleLabels[role] || (role === 'dps' ? 'DPS' : 'Member');
+
+    joinButtons.push(
+      new ButtonBuilder()
+        .setCustomId(`custom_join_${role}`)
+        .setLabel(`Join ${label}`)
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(isFull)
+    );
+  }
+
+  const rows = [];
+
+  for (let i = 0; i < joinButtons.length; i += 5) {
+  rows.push(
+    new ActionRowBuilder().addComponents(joinButtons.slice(i, i + 5))
+  );
+}
+
+  const controls = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('custom_leave')
+      .setLabel('Leave')
+      .setStyle(ButtonStyle.Secondary),
+
+    new ButtonBuilder()
+      .setCustomId('custom_full')
+      .setLabel(isFull ? 'Reopen' : 'Full')
+      .setStyle(isFull ? ButtonStyle.Success : ButtonStyle.Danger),
+
+    new ButtonBuilder()
+      .setCustomId('custom_delete')
+      .setLabel('Delete')
+      .setStyle(ButtonStyle.Danger)
+  );
+
+  rows.push(controls);
+
+  return rows;
+}
+
 client.on('interactionCreate', async interaction => {
   if (!interaction.isButton() && !interaction.isStringSelectMenu()) return;
 
@@ -483,6 +595,7 @@ if (!config || interaction.user.id !== config.creatorId) {
   });
 }
 
+
   if (!config) {
     return interaction.reply({
       content: 'Configuration expired.',
@@ -496,14 +609,15 @@ if (!config || interaction.user.id !== config.creatorId) {
     .setCustomId('config_required_roles')
     .setPlaceholder('Select required roles')
     .setMinValues(1)
-    .setMaxValues(6)
+    .setMaxValues(7)
     .addOptions(
       { label: 'Tank', value: 'tank' },
-      { label: 'Healer', value: 'healer' },
-      { label: 'Mercenary', value: 'mercenary' },
-      { label: 'Sword Master', value: 'swordmaster' },
-      { label: 'Force User', value: 'force user' },
-      { label: 'Ice Stacker', value: 'ice' }
+{ label: 'Healer', value: 'healer' },
+{ label: 'Mercenary', value: 'mercenary' },
+{ label: 'Sword Master', value: 'swordmaster' },
+{ label: 'Force User', value: 'forceuser' },
+{ label: 'Ice Stacker', value: 'ice' },
+{ label: 'Archer', value: 'archer' }
     );
 
   const skipButton = new ButtonBuilder()
@@ -522,6 +636,44 @@ Select the required roles, or click Skip if no special roles are needed.`,
     ]
   });
 }
+
+if (interaction.customId === 'config_required_roles') {
+  const config = pendingPartyConfigs.get(interaction.user.id);
+
+  if (!config || interaction.user.id !== config.creatorId) {
+    return interaction.reply({
+      content: 'Only the party creator can configure this.',
+      ephemeral: true
+    });
+  }
+
+  const selectedRoles = interaction.values;
+  const size = Number(config.size);
+
+  const party = buildConfiguredParty(
+    config.title,
+    config.creatorId,
+    size,
+    selectedRoles
+  );
+
+  const channel = await client.channels.fetch(config.channelId);
+
+  const sent = await channel.send({
+    embeds: [buildConfiguredPartyEmbed(party)],
+    components: buildConfiguredPartyButtons(party)
+  });
+
+  parties.set(sent.id, party);
+  pendingPartyConfigs.delete(interaction.user.id);
+
+  return interaction.update({
+    content: 'Party created successfully.',
+    components: []
+  });
+
+}
+
 
     const parts = interaction.customId.split('_');
     const role = parts[1];
