@@ -472,6 +472,7 @@ client.on('interactionCreate', async interaction => {
 
   if (interaction.isStringSelectMenu()) {
 
+
 if (interaction.customId === 'config_party_size') {
   const config = pendingPartyConfigs.get(interaction.user.id);
 
@@ -484,23 +485,35 @@ if (interaction.customId === 'config_party_size') {
 
   config.size = interaction.values[0];
 
-  const typeMenu = new StringSelectMenuBuilder()
-  .setCustomId('config_party_type')
-  .setPlaceholder('Select Party Type')
-  .addOptions(
-    { label: 'No Tank / No Healer', value: 'none' },
-    { label: 'Need Tank only', value: 'tank' },
-    { label: 'Need Healer only', value: 'healer' },
-    { label: 'Need Tank and Healer', value: 'tank_healer' }
-  );
+  const roleMenu = new StringSelectMenuBuilder()
+    .setCustomId('config_required_roles')
+    .setPlaceholder('Select required roles')
+    .setMinValues(1)
+    .setMaxValues(6)
+    .addOptions(
+      { label: 'Tank', value: 'tank' },
+      { label: 'Healer', value: 'healer' },
+      { label: 'MC', value: 'mc' },
+      { label: 'SM', value: 'sm' },
+      { label: 'FU', value: 'fu' },
+      { label: 'Ice Stacker', value: 'ice' }
+    );
 
-return interaction.update({
-  content:
+  const skipButton = new ButtonBuilder()
+    .setCustomId('config_skip_roles')
+    .setLabel('Skip')
+    .setStyle(ButtonStyle.Secondary);
+
+  return interaction.update({
+    content:
 `Party Size: ${config.size}-man
 
-Now select the party type:`,
-  components: [new ActionRowBuilder().addComponents(typeMenu)]
-});
+Select the required roles, or click Skip if no special roles are needed.`,
+    components: [
+      new ActionRowBuilder().addComponents(roleMenu),
+      new ActionRowBuilder().addComponents(skipButton)
+    ]
+  });
 }
 
     const parts = interaction.customId.split('_');
@@ -630,6 +643,7 @@ if (!party) {
         { label: 'Majesty', value: 'Majesty' },
         { label: 'Moonlord', value: 'Moonlord' },
         { label: 'Physician', value: 'Physician' },
+        { label: 'Saint', value: 'Saint' },
         { label: 'Saleana', value: 'Saleana' },
         { label: 'Shooting Star', value: 'Shooting Star' },
         { label: 'Smasher', value: 'Smasher' },
