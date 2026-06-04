@@ -34,6 +34,8 @@ const client = new Client({
 
 const CHANNEL_ID = process.env.CHANNEL_ID;
 
+const LOOT_CATEGORY_ID = process.env.LOOT_CATEGORY_ID;
+
 const cooldowns = new Map();
 const COOLDOWN_TIME = 3 * 60 * 60 * 1000; // 3 hours
 
@@ -509,14 +511,34 @@ function buildConfiguredParty(title, creatorId, size, selectedRoles) {
   }
 
   return {
-    creatorId,
-    title,
-    date: Math.floor(Date.now() / 1000),
-    size,
-    slots,
-    full: false,
-    type: 'custom'
-  };
+  creatorId,
+  title,
+  date: Math.floor(Date.now() / 1000),
+  size,
+  slots,
+  full: false,
+  threadCreated: false,
+  threadId: null,
+  type: 'custom'
+};
+}
+
+function getPartyMembers(party) {
+  return party.slots
+    .filter(slot => slot.user)
+    .map(slot => {
+      const match = slot.user.match(/<@(\d+)>/);
+      return match ? `<@${match[1]}>` : null;
+    })
+    .filter(Boolean);
+}
+
+function getThreadDate() {
+  return new Date().toLocaleDateString('en-US', {
+    timeZone: 'Asia/Manila',
+    month: 'short',
+    day: 'numeric'
+  });
 }
 
 function buildConfiguredPartyEmbed(party) {
@@ -576,6 +598,13 @@ function buildConfiguredPartyButtons(party) {
       .setCustomId('custom_full')
       .setLabel(isFull ? 'Reopen' : 'Full')
       .setStyle(isFull ? ButtonStyle.Success : ButtonStyle.Danger),
+
+new ButtonBuilder()
+  .setCustomId('custom_thread')
+  .setLabel('Create Thread')
+  .setStyle(ButtonStyle.Primary)
+  .setDisabled(!isFull || party.threadCreated),
+
 
     new ButtonBuilder()
       .setCustomId('custom_delete')
@@ -781,6 +810,72 @@ if (interaction.customId.startsWith('custom_select_')) {
   });
 }
 
+if (interaction.customId.startsWith('custom_thread_channel_')) {
+  const messageId = interaction.customId.replace('custom_thread_channel_', '');
+  const party = parties.get(messageId);
+
+  if (!party) {
+    return interaction.update({
+      content: 'Party not found.',
+      components: []
+    });
+  }
+
+  if (interaction.user.id !== party.creatorId) {
+    return interaction.update({
+      content: 'Only the party creator can create this thread.',
+      components: []
+    });
+  }
+
+  if (party.threadCreated) {
+    return interaction.update({
+      content: 'A thread has already been created for this party.',
+      components: []
+    });
+  }
+
+  const channelId = interaction.values[0];
+  const selectedChannel = await client.channels.fetch(channelId);
+
+  const threadName = `${party.title} - ${getThreadDate()}`.slice(0, 100);
+  const members = getPartyMembers(party);
+
+  const threadStarter = await selectedChannel.send({
+    content:
+`✅ **${party.title}**
+
+${members.join(' ')}
+
+Thread for this run.`
+  });
+
+  const thread = await threadStarter.startThread({
+    name: threadName,
+    autoArchiveDuration: 1440
+  });
+
+  party.threadCreated = true;
+  party.threadId = thread.id;
+
+  const originalMessage = await interaction.channel.messages.fetch(messageId);
+
+  await originalMessage.edit({
+    embeds: [buildConfiguredPartyEmbed(party)],
+    components: buildConfiguredPartyButtons(party)
+  });
+
+  await thread.send(
+`${members.join(' ')}
+
+Please coordinate here.`
+  );
+
+  return interaction.update({
+    content: `Thread created in <#${selectedChannel.id}>: ${thread.url}`,
+    components: []
+  });
+}
 
 }
 
@@ -1012,15 +1107,83 @@ if (interaction.customId === 'custom_full') {
     });
   }
 
-  party.full = !party.full;
+party.full = !party.full;
 
-  await interaction.message.edit({
-    embeds: [buildConfiguredPartyEmbed(party)],
-    components: buildConfiguredPartyButtons(party)
-  });
+await interaction.message.edit({
+  embeds: [buildConfiguredPartyEmbed(party)],
+  components: buildConfiguredPartyButtons(party)
+});
+
+if (party.full) {
+  const members = party.slots
+    .filter(slot => slot.user)
+    .map(slot => {
+      const match = slot.user.match(/<@(\d+)>/);
+      return match ? `<@${match[1]}>` : null;
+    })
+    .filter(Boolean);
+
+  if (members.length) {
+    await interaction.channel.send(
+      `✅ **${party.title} is now FULL!**\n${members.join(' ')}`
+    );
+  }
+}
+
+return interaction.reply({
+  content: party.full ? 'Party marked as full.' : 'Party reopened.',
+  ephemeral: true
+});
+}
+
+if (interaction.customId === 'custom_thread') {
+  if (interaction.user.id !== party.creatorId) {
+    return interaction.reply({
+      content: 'Only the party creator can create a thread.',
+      ephemeral: true
+    });
+  }
+
+  if (!party.full) {
+    return interaction.reply({
+      content: 'Please mark the party as full first.',
+      ephemeral: true
+    });
+  }
+
+  if (party.threadCreated) {
+    return interaction.reply({
+      content: 'A thread has already been created for this party.',
+      ephemeral: true
+    });
+  }
+
+  const channels = interaction.guild.channels.cache
+    .filter(channel =>
+  channel.parentId === LOOT_CATEGORY_ID &&
+  channel.isTextBased()
+)
+    .map(channel => ({
+      label: channel.name,
+      value: channel.id
+    }))
+    .slice(0, 25);
+
+  if (!channels.length) {
+    return interaction.reply({
+      content: 'No text channels found under the Loot Distribution category.',
+      ephemeral: true
+    });
+  }
+
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId(`custom_thread_channel_${interaction.message.id}`)
+    .setPlaceholder('Select Loot Distribution Channel')
+    .addOptions(channels);
 
   return interaction.reply({
-    content: party.full ? 'Party marked as full.' : 'Party reopened.',
+    content: 'Select where to create the thread:',
+    components: [new ActionRowBuilder().addComponents(menu)],
     ephemeral: true
   });
 }
