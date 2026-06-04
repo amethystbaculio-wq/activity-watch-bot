@@ -484,13 +484,23 @@ if (interaction.customId === 'config_party_size') {
 
   config.size = interaction.values[0];
 
-  return interaction.update({
-    content:
+  const typeMenu = new StringSelectMenuBuilder()
+  .setCustomId('config_party_type')
+  .setPlaceholder('Select Party Type')
+  .addOptions(
+    { label: 'No Tank / No Healer', value: 'none' },
+    { label: 'Need Tank only', value: 'tank' },
+    { label: 'Need Healer only', value: 'healer' },
+    { label: 'Need Tank and Healer', value: 'tank_healer' }
+  );
+
+return interaction.update({
+  content:
 `Party Size: ${config.size}-man
 
-Now select the party type.`,
-    components: []
-  });
+Now select the party type:`,
+  components: [new ActionRowBuilder().addComponents(typeMenu)]
+});
 }
 
     const parts = interaction.customId.split('_');
