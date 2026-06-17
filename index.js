@@ -1381,7 +1381,7 @@ client.once('ready', async () => {
 
   const embed = new EmbedBuilder()
     .setTitle("📮 Guild Suggestion Box")
-    .setDescription("Click below to submit a suggestion anonymously.")
+    .setDescription("Click the button below to submit a suggestion anonymously.")
     .setColor("Blue");
 
   const row = new ActionRowBuilder().addComponents(
@@ -1392,10 +1392,36 @@ client.once('ready', async () => {
       .setStyle(ButtonStyle.Primary)
   );
 
-  await channel.send({
+  const PANEL_ID = process.env.SUGGESTION_PANEL_ID;
+
+  let msg;
+
+  try {
+    if (PANEL_ID) {
+      msg = await channel.messages.fetch(PANEL_ID);
+
+      await msg.edit({
+        embeds: [embed],
+        components: [row]
+      });
+
+      console.log("📮 Suggestion panel UPDATED (always visible)");
+      return;
+    }
+  } catch (err) {
+    console.log("📮 No panel found → creating new one");
+  }
+
+  msg = await channel.send({
     embeds: [embed],
     components: [row]
   });
+
+  console.log("SAVE THIS ID:", msg.id);
+
+ if (!PANEL_ID || !msg.pinned) {
+  await msg.pin().catch(() => {});
+}
 });
 
 // weekly reminder
