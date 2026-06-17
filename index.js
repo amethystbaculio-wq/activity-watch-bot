@@ -19,7 +19,10 @@ const {
   ButtonBuilder,
   ButtonStyle,
   EmbedBuilder,
-StringSelectMenuBuilder
+  StringSelectMenuBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle
 } = require('discord.js');
 
 const client = new Client({
@@ -618,7 +621,60 @@ new ButtonBuilder()
 }
 
 client.on('interactionCreate', async interaction => {
-  if (!interaction.isButton() && !interaction.isStringSelectMenu()) return;
+  if (
+  !interaction.isButton() &&
+  !interaction.isStringSelectMenu() &&
+  !interaction.isModalSubmit()
+) return;
+
+
+if (interaction.isButton()) {
+  if (interaction.customId === 'open_suggestion_modal') {
+
+    const modal = new ModalBuilder()
+      .setCustomId('suggestion_modal')
+      .setTitle('Guild Suggestion');
+
+    const input = new TextInputBuilder()
+      .setCustomId('suggestion_input')
+      .setLabel('Your suggestion')
+      .setStyle(TextInputStyle.Paragraph)
+      .setRequired(true);
+
+    const row = new ActionRowBuilder().addComponents(input);
+    modal.addComponents(row);
+
+    return interaction.showModal(modal);
+  }
+}
+
+if (interaction.isModalSubmit()) {
+  if (interaction.customId === 'suggestion_modal') {
+
+    const suggestion = interaction.fields.getTextInputValue('suggestion_input');
+
+    const channel = await client.channels.fetch(process.env.SUGGESTION_CHANNEL_ID);
+
+    const id = Math.floor(10000 + Math.random() * 90000);
+
+    const embed = new EmbedBuilder()
+      .setTitle(`📮 Guild Suggestion #${id}`)
+      .setDescription(suggestion)
+      .setColor("Green")
+      .setFooter({ text: "Anonymous submission" });
+
+    const msg = await channel.send({ embeds: [embed] });
+
+    await msg.react("👍");
+    await msg.react("👎");
+
+    return interaction.reply({
+      content: "✅ Suggestion submitted anonymously!",
+      ephemeral: true
+    });
+  }
+}
+
 
   if (interaction.isStringSelectMenu()) {
 
@@ -1005,7 +1061,7 @@ const customRoleClasses = {
   swordmaster: ['Gladiator', 'Moonlord'],
   forceuser: ['Majesty', 'Smasher'],
   ice: ['Adept', 'Elestra'],
-  archer: ['Acrobat', 'Artillery', 'Sniper', 'Tempest'],
+  archer: ['Artillery', 'Sniper', 'Tempest', 'Windwalker'],
   dps: ['Adept', 'Artillery', 'Barbarian', 'Blade Dancer', 'Crusader', 'Dark Avenger', 'Dark Summoner', 'Destroyer', 'Elestra', 'Gear Master', 'Gladiator', 'Guardian', 'Inquisitor', 'Majesty', 'Moonlord', 'Physician', 'Saint', 'Saleana', 'Shooting Star', 'Smasher', 'Sniper', 'Soul Eater', 'Spirit Dancer', 'Tempest', 'Windwalker'],
 member: [
   'Adept',
@@ -1318,8 +1374,28 @@ if (interaction.customId === 'party_delete') {
 }
 });
 
-client.once('ready', () => {
+client.once('ready', async () => {
   console.log(`${client.user.tag} is online!`);
+
+  const channel = await client.channels.fetch(CHANNEL_ID);
+
+  const embed = new EmbedBuilder()
+    .setTitle("📮 Guild Suggestion Box")
+    .setDescription("Click below to submit a suggestion anonymously.")
+    .setColor("Blue");
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("open_suggestion_modal")
+      .setLabel("Send Suggestion")
+      .setEmoji("📮")
+      .setStyle(ButtonStyle.Primary)
+  );
+
+  await channel.send({
+    embeds: [embed],
+    components: [row]
+  });
 });
 
 // weekly reminder
