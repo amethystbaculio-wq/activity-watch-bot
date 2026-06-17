@@ -1377,7 +1377,7 @@ if (interaction.customId === 'party_delete') {
 client.once('ready', async () => {
   console.log(`${client.user.tag} is online!`);
 
-  const channel = await client.channels.fetch(CHANNEL_ID);
+  const channel = await client.channels.fetch(process.env.SUGGESTION_CHANNEL_ID);
 
   const embed = new EmbedBuilder()
     .setTitle("📮 Guild Suggestion Box")
