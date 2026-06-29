@@ -48,6 +48,8 @@ const LOOT_CATEGORY_ID = process.env.LOOT_CATEGORY_ID;
 const APPLICATION_CHANNEL_ID = process.env.APPLICATION_CHANNEL_ID;
 const RECRUITMENT_TRACKER_CHANNEL_ID = process.env.RECRUITMENT_TRACKER_CHANNEL_ID;
 const RECRUITMENT_OFFICER_ROLE_ID = process.env.RECRUITMENT_OFFICER_ROLE_ID;
+const APPLICANT_ROLE_ID = process.env.APPLICANT_ROLE_ID;
+const ACCEPTED_ROLE_ID = process.env.ACCEPTED_ROLE_ID;
 
 let nextApplicationNumber = Number(process.env.RECRUITMENT_START_NUMBER || 1);
 
@@ -183,13 +185,44 @@ async function closeApplicationThread(app, reason) {
   try {
     const thread = await client.channels.fetch(app.threadId);
 
-    if (!thread || !thread.isThread()) return;
+    if (!thread || !thread.isThread()) {
+      console.log('Thread not found or not a thread.');
+      return;
+    }
 
-    await thread.send(`🔒 **Thread auto-closed:** ${reason}`).catch(() => {});
-    await thread.setLocked(true).catch(() => {});
-    await thread.setArchived(true).catch(() => {});
+    await thread.send(`🔒 **Thread auto-closed:** ${reason}`);
+
+    // Archive first
+    await thread.setArchived(true, reason);
+
+    // Then lock it
+    await thread.setLocked(true, reason);
+
+    console.log(`Application thread closed: ${app.appId}`);
   } catch (err) {
     console.error('Failed to auto-close application thread:', err);
+  }
+}
+
+async function addRoleToMember(guild, userId, roleId) {
+  if (!guild || !roleId) return;
+
+  try {
+    const member = await guild.members.fetch(userId);
+    await member.roles.add(roleId);
+  } catch (err) {
+    console.error(`Failed to add role ${roleId} to ${userId}:`, err);
+  }
+}
+
+async function removeRoleFromMember(guild, userId, roleId) {
+  if (!guild || !roleId) return;
+
+  try {
+    const member = await guild.members.fetch(userId);
+    await member.roles.remove(roleId);
+  } catch (err) {
+    console.error(`Failed to remove role ${roleId} from ${userId}:`, err);
   }
 }
 
@@ -840,6 +873,8 @@ if (interaction.isButton() && interaction.customId === 'recruitment_apply') {
     playStyle: null
   });
 
+await addRoleToMember(interaction.guild, interaction.user.id, APPLICANT_ROLE_ID);
+
   try {
     await interaction.user.send(
 `🌊 **West Coast Application**
@@ -1003,20 +1038,24 @@ if (action === 'request') {
   });
 
   await client.users.fetch(app.userId)
-    .then(user => user.send(
+  .then(user => user.send(
 `✅ **Application Accepted!**
 
 Welcome to **West Coast** 🍁
 
 Feel free to join conversations, raids, and guild activities.`
-    ))
-    .catch(() => interaction.followUp({
-      content: 'Could not DM the applicant.',
-      ephemeral: true
-    }));
+  ))
+  .catch(() => interaction.followUp({
+    content: 'Could not DM the applicant.',
+    ephemeral: true
+  }));
 
-  await closeApplicationThread(app, 'Application accepted');
-  return;
+const guild = await client.guilds.fetch(app.guildId);
+await addRoleToMember(guild, app.userId, ACCEPTED_ROLE_ID);
+await removeRoleFromMember(guild, app.userId, APPLICANT_ROLE_ID);
+
+await closeApplicationThread(app, 'Application accepted');
+return;
 }
 
  if (action === 'reject') {
@@ -1030,20 +1069,23 @@ Feel free to join conversations, raids, and guild activities.`
   });
 
   await client.users.fetch(app.userId)
-    .then(user => user.send(
+  .then(user => user.send(
 `❌ **Application Rejected**
 
 Thank you for applying to **West Coast**.
 
 Unfortunately, your application was not accepted at this time.`
-    ))
-    .catch(() => interaction.followUp({
-      content: 'Could not DM the applicant.',
-      ephemeral: true
-    }));
+  ))
+  .catch(() => interaction.followUp({
+    content: 'Could not DM the applicant.',
+    ephemeral: true
+  }));
 
-  await closeApplicationThread(app, 'Application rejected');
-  return;
+const guild = await client.guilds.fetch(app.guildId);
+await removeRoleFromMember(guild, app.userId, APPLICANT_ROLE_ID);
+
+await closeApplicationThread(app, 'Application rejected');
+return;
 }
 
   if (action === 'close') {
@@ -1957,24 +1999,25 @@ client.on('messageCreate', async message => {
 
       const appId = getNextAppId();
 
-      const app = {
-        appId,
-        userId: form.userId,
-        username: form.username,
-        ign: form.ign,
-        location: form.location,
-        activeTime: form.activeTime,
-        antiCheatAgreement: form.antiCheatAgreement,
-        playStyle: form.playStyle,
-        status: '🟠 Under Review',
-        threadId: null,
-        messageId: null,
-        history: [
-          `Submitted by <@${form.userId}> via DM application`,
-          '📸 Stats and gears screenshot received from applicant'
-        ],
-        createdAt: new Date()
-      };
+    const app = {
+  appId,
+  userId: form.userId,
+  username: form.username,
+  guildId: form.guildId,
+  ign: form.ign,
+  location: form.location,
+  activeTime: form.activeTime,
+  antiCheatAgreement: form.antiCheatAgreement,
+  playStyle: form.playStyle,
+  status: '🟠 Under Review',
+  threadId: null,
+  messageId: null,
+  history: [
+    `Submitted by <@${form.userId}> via DM application`,
+    '📸 Stats and gears screenshot received from applicant'
+  ],
+  createdAt: new Date()
+};
 
       const tracker = await client.channels.fetch(RECRUITMENT_TRACKER_CHANNEL_ID).catch(() => null);
 
@@ -2061,7 +2104,7 @@ ${attachmentLinks}`
 
     pendingApplicantReplies.delete(message.author.id);
 
-    return message.reply('✅ Response received. Officers will review it.');
+    return message.reply('Response received. Officers will review it.');
   }
 
   return message.reply('I do not have an active application request for you right now. Please click Apply in the server.');
