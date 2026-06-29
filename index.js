@@ -75,19 +75,9 @@ function buildRecruitmentPanel() {
   const embed = new EmbedBuilder()
     .setTitle('🌊 West Coast Recruitment')
     .setDescription(
-`Welcome to West Coast!
+`Hello! Thank you for your interest in joining West Coast 🍁
 
-Please read the requirements before applying.
-
-**Requirements**
-• Active player
-• Join Discord VC during raids
-• Stats and gears screenshot required
-• No modders/cheaters
-
-━━━━━━━━━━━━━━━━━━
-
-Click **Apply** below. The bot will DM you the application questions.`
+Kindly click apply button below to proceed with your application.`
     )
     .setColor('Blue');
 
