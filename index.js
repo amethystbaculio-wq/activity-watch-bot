@@ -137,7 +137,7 @@ function buildApplicationButtons(app) {
     new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId(`app:request:${app.appId}`)
-        .setLabel('Request Info')
+        .setLabel('Send DM')
         .setEmoji('💬')
         .setStyle(ButtonStyle.Primary)
         .setDisabled(closed),
@@ -176,6 +176,20 @@ async function updateApplicationMessage(app) {
     });
   } catch (err) {
     console.error('Failed to update application message:', err);
+  }
+}
+
+async function closeApplicationThread(app, reason) {
+  try {
+    const thread = await client.channels.fetch(app.threadId);
+
+    if (!thread || !thread.isThread()) return;
+
+    await thread.send(`🔒 **Thread auto-closed:** ${reason}`).catch(() => {});
+    await thread.setLocked(true).catch(() => {});
+    await thread.setArchived(true).catch(() => {});
+  } catch (err) {
+    console.error('Failed to auto-close application thread:', err);
   }
 }
 
@@ -962,57 +976,75 @@ if (interaction.isButton() && interaction.customId.startsWith('app:')) {
     });
   }
 
-  if (action === 'request') {
-    const modal = new ModalBuilder()
-      .setCustomId(`app:requestModal:${app.appId}`)
-      .setTitle(`Request Info - ${app.appId}`);
+if (action === 'request') {
+  const modal = new ModalBuilder()
+    .setCustomId(`app:requestModal:${app.appId}`)
+    .setTitle(`Send DM - ${app.appId}`);
 
-    const requestInput = new TextInputBuilder()
-      .setCustomId('request_text')
-      .setLabel('What should the applicant send?')
-      .setPlaceholder('Example: Please send your Dragon Jade screenshot.')
-      .setStyle(TextInputStyle.Paragraph)
-      .setRequired(true);
+  const requestInput = new TextInputBuilder()
+    .setCustomId('request_text')
+    .setLabel('Message to send to applicant')
+    .setPlaceholder('Example: Please send your Dragon Jade screenshot.')
+    .setStyle(TextInputStyle.Paragraph)
+    .setRequired(true);
 
-    modal.addComponents(new ActionRowBuilder().addComponents(requestInput));
-    return interaction.showModal(modal);
-  }
+  modal.addComponents(new ActionRowBuilder().addComponents(requestInput));
+  return interaction.showModal(modal);
+}
 
-  if (action === 'accept') {
-    app.status = '🟢 Accepted';
-    app.history.push(`✅ Accepted by <@${interaction.user.id}>`);
-    await updateApplicationMessage(app);
+ if (action === 'accept') {
+  app.status = '🟢 Accepted';
+  app.history.push(`✅ Accepted by <@${interaction.user.id}>`);
+  await updateApplicationMessage(app);
 
-    await interaction.reply({
-      content: 'Application accepted.',
-      ephemeral: true
-    });
+  await interaction.reply({
+    content: 'Application accepted.',
+    ephemeral: true
+  });
 
-    return client.users.fetch(app.userId)
-      .then(user => user.send(
+  await client.users.fetch(app.userId)
+    .then(user => user.send(
 `✅ **Application Accepted!**
 
 Welcome to **West Coast** 🍁
 
 Feel free to join conversations, raids, and guild activities.`
-))
-      .catch(() => interaction.followUp({ content: 'Could not DM the applicant.', ephemeral: true }));
-  }
-
-  if (action === 'reject') {
-    app.status = '🔴 Rejected';
-    app.history.push(`❌ Rejected by <@${interaction.user.id}>`);
-    await updateApplicationMessage(app);
-
-    await interaction.reply({
-      content: 'Application rejected.',
+    ))
+    .catch(() => interaction.followUp({
+      content: 'Could not DM the applicant.',
       ephemeral: true
-    });
+    }));
 
-    return client.users.fetch(app.userId)
-      .then(user => user.send('Thank you for applying to West Coast. Unfortunately, your application was not accepted at this time.'))
-      .catch(() => interaction.followUp({ content: 'Could not DM the applicant.', ephemeral: true }));
-  }
+  await closeApplicationThread(app, 'Application accepted');
+  return;
+}
+
+ if (action === 'reject') {
+  app.status = '🔴 Rejected';
+  app.history.push(`❌ Rejected by <@${interaction.user.id}>`);
+  await updateApplicationMessage(app);
+
+  await interaction.reply({
+    content: 'Application rejected.',
+    ephemeral: true
+  });
+
+  await client.users.fetch(app.userId)
+    .then(user => user.send(
+`❌ **Application Rejected**
+
+Thank you for applying to **West Coast**.
+
+Unfortunately, your application was not accepted at this time.`
+    ))
+    .catch(() => interaction.followUp({
+      content: 'Could not DM the applicant.',
+      ephemeral: true
+    }));
+
+  await closeApplicationThread(app, 'Application rejected');
+  return;
+}
 
   if (action === 'close') {
     app.status = '⚫ Closed';
@@ -1033,7 +1065,7 @@ Feel free to join conversations, raids, and guild activities.`
 if (interaction.isModalSubmit() && interaction.customId.startsWith('app:requestModal:')) {
   if (!isRecruitmentOfficer(interaction)) {
     return interaction.reply({
-      content: 'Only recruitment officers can request info.',
+      content: 'Only recruitment officers can send DMs.',
       ephemeral: true
     });
   }
@@ -1050,8 +1082,8 @@ if (interaction.isModalSubmit() && interaction.customId.startsWith('app:requestM
 
   const requestText = interaction.fields.getTextInputValue('request_text');
 
-  app.status = '🔵 Waiting for Extra Info';
-  app.history.push(`💬 Info requested by <@${interaction.user.id}>: ${requestText}`);
+  app.status = '🔵 Waiting for Applicant Reply';
+  app.history.push(`📩 DM sent by <@${interaction.user.id}>: ${requestText}`);
   await updateApplicationMessage(app);
 
   pendingApplicantReplies.set(app.userId, {
@@ -1059,18 +1091,48 @@ if (interaction.isModalSubmit() && interaction.customId.startsWith('app:requestM
     label: requestText
   });
 
+  const thread = await client.channels.fetch(app.threadId);
+
+  await thread.send({
+    embeds: [
+      new EmbedBuilder()
+        .setTitle('📩 DM Sent to Applicant')
+        .setDescription(
+`**Officer**
+<@${interaction.user.id}>
+
+**Applicant**
+<@${app.userId}>
+
+**Message**
+${requestText}`
+        )
+        .setColor('Blue')
+        .setTimestamp()
+    ]
+  });
+
   try {
     const user = await client.users.fetch(app.userId);
-    await user.send(`💬 **West Coast Recruitment Request**\n\n${requestText}`);
+
+    await user.send(
+`📩 **Message from West Coast Officers**
+
+${requestText}
+
+You may reply here. Your response will be forwarded to the recruitment thread.`
+    );
   } catch (err) {
+    await thread.send(`⚠️ Could not DM <@${app.userId}>. They may have DMs disabled.`);
+
     return interaction.reply({
-      content: 'Request saved, but I could not DM the applicant.',
+      content: 'I logged the message, but I could not DM the applicant.',
       ephemeral: true
     });
   }
 
   return interaction.reply({
-    content: 'Request sent to applicant.',
+    content: 'DM sent to applicant and logged in this thread.',
     ephemeral: true
   });
 }
