@@ -14,6 +14,7 @@ app.listen(process.env.PORT || 3000, () => {
 const {
   Client,
   GatewayIntentBits,
+  Partials,
   ActivityType,
   ActionRowBuilder,
   ButtonBuilder,
@@ -31,13 +32,205 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildPresences,
     GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.DirectMessages,
     GatewayIntentBits.MessageContent
-  ]
+  ],
+  partials: [Partials.Channel]
 });
 
 const CHANNEL_ID = process.env.CHANNEL_ID;
 
 const LOOT_CATEGORY_ID = process.env.LOOT_CATEGORY_ID;
+
+// ==============================
+// WEST COAST RECRUITMENT SYSTEM
+// ==============================
+const APPLICATION_CHANNEL_ID = process.env.APPLICATION_CHANNEL_ID;
+const RECRUITMENT_TRACKER_CHANNEL_ID = process.env.RECRUITMENT_TRACKER_CHANNEL_ID;
+const RECRUITMENT_OFFICER_ROLE_ID = process.env.RECRUITMENT_OFFICER_ROLE_ID;
+
+let nextApplicationNumber = Number(process.env.RECRUITMENT_START_NUMBER || 1);
+
+const applications = new Map();
+// userId -> application flow state while the applicant is answering DM questions.
+const dmApplications = new Map();
+// userId -> { appId, label } for officer follow-up requests after an application exists.
+const pendingApplicantReplies = new Map();
+
+function getNextAppId() {
+  const appId = `APP-${String(nextApplicationNumber).padStart(4, '0')}`;
+  nextApplicationNumber++;
+  return appId;
+}
+
+function isRecruitmentOfficer(interaction) {
+  if (!interaction.guild || !interaction.member) return false;
+  if (RECRUITMENT_OFFICER_ROLE_ID && interaction.member.roles?.cache?.has(RECRUITMENT_OFFICER_ROLE_ID)) {
+    return true;
+  }
+  return interaction.member.permissions?.has('ManageGuild') || false;
+}
+
+function buildRecruitmentPanel() {
+  const embed = new EmbedBuilder()
+    .setTitle('🌊 West Coast Recruitment')
+    .setDescription(
+`Welcome to West Coast!
+
+Please read the requirements before applying.
+
+**Requirements**
+• Active player
+• Join Discord VC during raids
+• Stats and gears screenshot required
+• No modders/cheaters
+
+━━━━━━━━━━━━━━━━━━
+
+Click **Apply** below. The bot will DM you the application questions.`
+    )
+    .setColor('Blue');
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('recruitment_apply')
+      .setLabel('Apply')
+      .setEmoji('📝')
+      .setStyle(ButtonStyle.Primary)
+  );
+
+  return { embed, row };
+}
+
+function buildApplicationEmbed(app) {
+  return new EmbedBuilder()
+    .setTitle(`${app.appId} | ${app.ign}`)
+    .setDescription(
+`**Application ${app.appId}**
+
+**Applicant**
+<@${app.userId}>
+
+**Main Character IGN**
+${app.ign}
+
+**Location**
+${app.location}
+
+**Most Active Playing Time**
+${app.activeTime}
+
+**Anti-Cheat Agreement**
+${app.antiCheatAgreement}
+
+**Play Style**
+${app.playStyle}
+
+**Status**
+${app.status}
+
+━━━━━━━━━━━━━━
+
+**Decision History**
+${app.history.length ? app.history.join('\n') : 'No actions yet.'}`
+    )
+    .setColor('Orange')
+    .setTimestamp(app.createdAt);
+}
+
+function buildApplicationButtons(app) {
+  const closed =
+    app.status.includes('Closed') ||
+    app.status.includes('Accepted') ||
+    app.status.includes('Rejected');
+
+  return [
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`app:request:${app.appId}`)
+        .setLabel('Request Info')
+        .setEmoji('💬')
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(closed),
+
+      new ButtonBuilder()
+        .setCustomId(`app:accept:${app.appId}`)
+        .setLabel('Accept')
+        .setEmoji('✅')
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(closed),
+
+      new ButtonBuilder()
+        .setCustomId(`app:reject:${app.appId}`)
+        .setLabel('Reject')
+        .setEmoji('❌')
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(closed),
+
+      new ButtonBuilder()
+        .setCustomId(`app:close:${app.appId}`)
+        .setLabel('Close')
+        .setEmoji('🔒')
+        .setStyle(ButtonStyle.Secondary)
+    )
+  ];
+}
+
+async function updateApplicationMessage(app) {
+  try {
+    const thread = await client.channels.fetch(app.threadId);
+    const msg = await thread.messages.fetch(app.messageId);
+
+    await msg.edit({
+      embeds: [buildApplicationEmbed(app)],
+      components: buildApplicationButtons(app)
+    });
+  } catch (err) {
+    console.error('Failed to update application message:', err);
+  }
+}
+
+async function setupRecruitmentPanel() {
+  if (!APPLICATION_CHANNEL_ID) {
+    console.log('📝 APPLICATION_CHANNEL_ID is not set. Recruitment panel skipped.');
+    return;
+  }
+
+  const channel = await client.channels.fetch(APPLICATION_CHANNEL_ID).catch(() => null);
+
+  if (!channel) {
+    console.log('📝 Recruitment application channel not found.');
+    return;
+  }
+
+  const { embed, row } = buildRecruitmentPanel();
+  const panelId = process.env.RECRUITMENT_PANEL_ID;
+
+  if (panelId) {
+    try {
+      const oldPanel = await channel.messages.fetch(panelId);
+
+      await oldPanel.edit({
+        embeds: [embed],
+        components: [row]
+      });
+
+      console.log('📝 Recruitment panel UPDATED');
+      return;
+    } catch (err) {
+      console.log('📝 Recruitment panel ID not found, creating a new one.');
+    }
+  }
+
+  const msg = await channel.send({
+    embeds: [embed],
+    components: [row]
+  });
+
+  console.log('SAVE THIS RECRUITMENT_PANEL_ID:', msg.id);
+  await msg.pin().catch(() => {});
+}
+
 
 const cooldowns = new Map();
 const COOLDOWN_TIME = 3 * 60 * 60 * 1000; // 3 hours
@@ -626,6 +819,266 @@ client.on('interactionCreate', async interaction => {
   !interaction.isStringSelectMenu() &&
   !interaction.isModalSubmit()
 ) return;
+
+
+// ==============================
+// Recruitment interaction handlers
+// ==============================
+
+if (interaction.isButton() && interaction.customId === 'recruitment_apply') {
+  dmApplications.set(interaction.user.id, {
+    step: 'ign',
+    userId: interaction.user.id,
+    username: interaction.user.tag,
+    ign: null,
+    location: null,
+    activeTime: null,
+    antiCheatAgreement: null,
+    playStyle: null
+  });
+
+  try {
+    await interaction.user.send(
+`🌊 **West Coast Application**
+
+Let's start your application.
+
+**Question 1/6**
+Enter your **Main Character IGN**.`
+    );
+
+    return interaction.reply({
+      content: '📩 I sent you a DM with the application questions.',
+      ephemeral: true
+    });
+  } catch (err) {
+    dmApplications.delete(interaction.user.id);
+
+    return interaction.reply({
+      content: 'I could not DM you. Please enable DMs from server members, then click Apply again.',
+      ephemeral: true
+    });
+  }
+}
+
+if (interaction.isStringSelectMenu() && interaction.customId === 'dm_app_location') {
+  const form = dmApplications.get(interaction.user.id);
+
+  if (!form) {
+    return interaction.reply({
+      content: 'Your application session expired. Please click Apply again.',
+      ephemeral: true
+    });
+  }
+
+  form.location = interaction.values[0];
+  form.step = 'activeTime';
+
+  await interaction.update({
+    content: `Location selected: **${form.location}**`,
+    components: []
+  });
+
+  return interaction.user.send(
+`**Question 3/6**
+What's your most active playing time?
+
+Example:
+10am-6pm`
+  );
+}
+
+if (interaction.isStringSelectMenu() && interaction.customId === 'dm_app_anticheat') {
+  const form = dmApplications.get(interaction.user.id);
+
+  if (!form) {
+    return interaction.reply({
+      content: 'Your application session expired. Please click Apply again.',
+      ephemeral: true
+    });
+  }
+
+  form.antiCheatAgreement = interaction.values[0];
+
+  await interaction.update({
+    content: `Anti-cheat agreement selected: **${form.antiCheatAgreement}**`,
+    components: []
+  });
+
+  if (form.antiCheatAgreement === 'No') {
+    dmApplications.delete(interaction.user.id);
+
+    return interaction.user.send(
+`Your application has been stopped.
+
+West Coast does not tolerate modders or cheaters. You must agree not to use such mods before applying.`
+    );
+  }
+
+  form.step = 'playStyle';
+
+  const playStyleMenu = new StringSelectMenuBuilder()
+    .setCustomId('dm_app_playstyle')
+    .setPlaceholder('Casual or Competitive?')
+    .addOptions(
+      { label: 'Casual', value: 'Casual' },
+      { label: 'Competitive', value: 'Competitive' }
+    );
+
+  return interaction.user.send({
+    content: '**Question 5/6**\nWould you describe yourself as casual or competitive? No wrong answer.',
+    components: [new ActionRowBuilder().addComponents(playStyleMenu)]
+  });
+}
+
+if (interaction.isStringSelectMenu() && interaction.customId === 'dm_app_playstyle') {
+  const form = dmApplications.get(interaction.user.id);
+
+  if (!form) {
+    return interaction.reply({
+      content: 'Your application session expired. Please click Apply again.',
+      ephemeral: true
+    });
+  }
+
+  form.playStyle = interaction.values[0];
+  form.step = 'statsGear';
+
+  await interaction.update({
+    content: `Play style selected: **${form.playStyle}**`,
+    components: []
+  });
+
+  return interaction.user.send(
+`**Question 6/6**
+Please post an image of your **stats and gears**.`
+  );
+}
+
+if (interaction.isButton() && interaction.customId.startsWith('app:')) {
+  if (!isRecruitmentOfficer(interaction)) {
+    return interaction.reply({
+      content: 'Only recruitment officers can use this button.',
+      ephemeral: true
+    });
+  }
+
+  const [, action, appId] = interaction.customId.split(':');
+  const app = applications.get(appId);
+
+  if (!app) {
+    return interaction.reply({
+      content: 'Application data was not found. The bot may have restarted.',
+      ephemeral: true
+    });
+  }
+
+  if (action === 'request') {
+    const modal = new ModalBuilder()
+      .setCustomId(`app:requestModal:${app.appId}`)
+      .setTitle(`Request Info - ${app.appId}`);
+
+    const requestInput = new TextInputBuilder()
+      .setCustomId('request_text')
+      .setLabel('What should the applicant send?')
+      .setPlaceholder('Example: Please send your Dragon Jade screenshot.')
+      .setStyle(TextInputStyle.Paragraph)
+      .setRequired(true);
+
+    modal.addComponents(new ActionRowBuilder().addComponents(requestInput));
+    return interaction.showModal(modal);
+  }
+
+  if (action === 'accept') {
+    app.status = '🟢 Accepted';
+    app.history.push(`✅ Accepted by <@${interaction.user.id}>`);
+    await updateApplicationMessage(app);
+
+    await interaction.reply({
+      content: 'Application accepted.',
+      ephemeral: true
+    });
+
+    return client.users.fetch(app.userId)
+      .then(user => user.send('Congratulations! Your application to West Coast has been accepted. An officer will contact you soon.'))
+      .catch(() => interaction.followUp({ content: 'Could not DM the applicant.', ephemeral: true }));
+  }
+
+  if (action === 'reject') {
+    app.status = '🔴 Rejected';
+    app.history.push(`❌ Rejected by <@${interaction.user.id}>`);
+    await updateApplicationMessage(app);
+
+    await interaction.reply({
+      content: 'Application rejected.',
+      ephemeral: true
+    });
+
+    return client.users.fetch(app.userId)
+      .then(user => user.send('Thank you for applying to West Coast. Unfortunately, your application was not accepted at this time.'))
+      .catch(() => interaction.followUp({ content: 'Could not DM the applicant.', ephemeral: true }));
+  }
+
+  if (action === 'close') {
+    app.status = '⚫ Closed';
+    app.history.push(`🔒 Closed by <@${interaction.user.id}>`);
+    await updateApplicationMessage(app);
+
+    const thread = await client.channels.fetch(app.threadId);
+    await thread.setLocked(true).catch(() => {});
+    await thread.setArchived(true).catch(() => {});
+
+    return interaction.reply({
+      content: 'Application thread closed.',
+      ephemeral: true
+    });
+  }
+}
+
+if (interaction.isModalSubmit() && interaction.customId.startsWith('app:requestModal:')) {
+  if (!isRecruitmentOfficer(interaction)) {
+    return interaction.reply({
+      content: 'Only recruitment officers can request info.',
+      ephemeral: true
+    });
+  }
+
+  const appId = interaction.customId.split(':')[2];
+  const app = applications.get(appId);
+
+  if (!app) {
+    return interaction.reply({
+      content: 'Application data was not found. The bot may have restarted.',
+      ephemeral: true
+    });
+  }
+
+  const requestText = interaction.fields.getTextInputValue('request_text');
+
+  app.status = '🔵 Waiting for Extra Info';
+  app.history.push(`💬 Info requested by <@${interaction.user.id}>: ${requestText}`);
+  await updateApplicationMessage(app);
+
+  pendingApplicantReplies.set(app.userId, {
+    appId: app.appId,
+    label: requestText
+  });
+
+  try {
+    const user = await client.users.fetch(app.userId);
+    await user.send(`💬 **West Coast Recruitment Request**\n\n${requestText}`);
+  } catch (err) {
+    return interaction.reply({
+      content: 'Request saved, but I could not DM the applicant.',
+      ephemeral: true
+    });
+  }
+
+  return interaction.reply({
+    content: 'Request sent to applicant.',
+    ephemeral: true
+  });
+}
 
 
 if (interaction.isButton()) {
@@ -1374,54 +1827,246 @@ if (interaction.customId === 'party_delete') {
 }
 });
 
+
+// ==============================
+// Recruitment DM message handler
+// Handles text answers and screenshots sent by applicants in DM.
+// ==============================
+client.on('messageCreate', async message => {
+  if (message.author.bot) return;
+  if (message.guild) return; // DM only
+
+  const form = dmApplications.get(message.author.id);
+
+  if (form) {
+    if (form.step === 'ign') {
+      form.ign = message.content.trim();
+
+      if (!form.ign) {
+        return message.reply('Please enter a valid Main Character IGN.');
+      }
+
+      form.step = 'location';
+
+      const locationMenu = new StringSelectMenuBuilder()
+        .setCustomId('dm_app_location')
+        .setPlaceholder('Where are you located?')
+        .addOptions(
+          { label: 'USA', value: 'USA' },
+          { label: 'Philippines', value: 'Philippines' },
+          { label: 'Singapore', value: 'Singapore' },
+          { label: 'Malaysia', value: 'Malaysia' },
+          { label: 'Indonesia', value: 'Indonesia' },
+          { label: 'Others', value: 'Others' }
+        );
+
+      return message.reply({
+        content: '**Question 2/6**\nWhere are you located?',
+        components: [new ActionRowBuilder().addComponents(locationMenu)]
+      });
+    }
+
+    if (form.step === 'activeTime') {
+      form.activeTime = message.content.trim();
+
+      if (!form.activeTime) {
+        return message.reply('Please enter your most active playing time. Example: 10am-6pm');
+      }
+
+      form.step = 'antiCheat';
+
+      const antiCheatMenu = new StringSelectMenuBuilder()
+        .setCustomId('dm_app_anticheat')
+        .setPlaceholder('Do you agree not to use mods/cheats?')
+        .addOptions(
+          { label: 'Yes', value: 'Yes' },
+          { label: 'No', value: 'No' }
+        );
+
+      return message.reply({
+        content: "**Question 4/6**\nWe don't tolerate modders/cheaters. Do you agree not to use such mods?",
+        components: [new ActionRowBuilder().addComponents(antiCheatMenu)]
+      });
+    }
+
+    if (form.step === 'statsGear') {
+      if (!message.attachments.size) {
+        return message.reply('Please upload an image of your stats and gears as an attachment.');
+      }
+
+      const attachmentLinks = [...message.attachments.values()]
+        .map(file => file.url)
+        .join('\n');
+
+      const appId = getNextAppId();
+
+      const app = {
+        appId,
+        userId: form.userId,
+        username: form.username,
+        ign: form.ign,
+        location: form.location,
+        activeTime: form.activeTime,
+        antiCheatAgreement: form.antiCheatAgreement,
+        playStyle: form.playStyle,
+        status: '🟠 Under Review',
+        threadId: null,
+        messageId: null,
+        history: [
+          `Submitted by <@${form.userId}> via DM application`,
+          '📸 Stats and gears screenshot received from applicant'
+        ],
+        createdAt: new Date()
+      };
+
+      const tracker = await client.channels.fetch(RECRUITMENT_TRACKER_CHANNEL_ID).catch(() => null);
+
+      if (!tracker) {
+        return message.reply('I could not find the recruitment tracker channel. Please contact an officer.');
+      }
+
+      const thread = await tracker.threads.create({
+        name: `${app.appId} | ${app.ign}`.slice(0, 100),
+        autoArchiveDuration: 1440,
+        reason: `New completed application from ${form.username}`
+      });
+
+      app.threadId = thread.id;
+
+      const appMessage = await thread.send({
+        embeds: [buildApplicationEmbed(app)],
+        components: buildApplicationButtons(app)
+      });
+
+      app.messageId = appMessage.id;
+      applications.set(app.appId, app);
+
+      await thread.send(
+`📸 **Stats and Gears Screenshot from <@${message.author.id}>**
+
+${attachmentLinks}`
+      );
+
+      dmApplications.delete(message.author.id);
+
+      return message.reply(
+`✅ Your application has been submitted as **${app.appId}**.
+
+Your stats and gears screenshot was received. Officers will review your application.`
+      );
+    }
+
+    return;
+  }
+
+  const pending = pendingApplicantReplies.get(message.author.id);
+
+  if (pending) {
+    const app = applications.get(pending.appId);
+
+    if (!app) {
+      pendingApplicantReplies.delete(message.author.id);
+      return message.reply('Sorry, I could not find your application. Please contact an officer.');
+    }
+
+    const thread = await client.channels.fetch(app.threadId).catch(() => null);
+
+    if (!thread) {
+      return message.reply('Sorry, I could not find your application thread. Please contact an officer.');
+    }
+
+    const attachmentLinks = message.attachments.size
+      ? [...message.attachments.values()].map(file => file.url).join('\n')
+      : 'No attachment provided.';
+
+    const textReply = message.content?.trim()
+      ? `\n**Message:**\n${message.content.trim()}`
+      : '';
+
+    await thread.send(
+`💬 **Applicant response from <@${message.author.id}>**
+
+**Request**
+${pending.label}
+${textReply}
+
+**Attachments**
+${attachmentLinks}`
+    );
+
+    app.status = '🟠 Under Review';
+    app.history.push(`💬 Applicant responded to request: ${pending.label}`);
+    await updateApplicationMessage(app);
+
+    pendingApplicantReplies.delete(message.author.id);
+
+    return message.reply('✅ Response received. Officers will review it.');
+  }
+
+  return message.reply('I do not have an active application request for you right now. Please click Apply in the server.');
+});
+
+
 client.once('ready', async () => {
   console.log(`${client.user.tag} is online!`);
 
-  const channel = await client.channels.fetch(process.env.SUGGESTION_CHANNEL_ID);
-
-  const embed = new EmbedBuilder()
-    .setTitle("📮 Guild Suggestion Box")
-    .setDescription("Click the button below to submit a suggestion anonymously.")
-    .setColor("Blue");
-
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("open_suggestion_modal")
-      .setLabel("Send Suggestion")
-      .setEmoji("📮")
-      .setStyle(ButtonStyle.Primary)
-  );
-
-  const PANEL_ID = process.env.SUGGESTION_PANEL_ID;
-
-  let msg;
-
+  // Suggestion panel
   try {
-    if (PANEL_ID) {
-      msg = await channel.messages.fetch(PANEL_ID);
+    const channel = await client.channels.fetch(process.env.SUGGESTION_CHANNEL_ID);
 
-      await msg.edit({
+    const embed = new EmbedBuilder()
+      .setTitle("📮 Guild Suggestion Box")
+      .setDescription("Click the button below to submit a suggestion anonymously.")
+      .setColor("Blue");
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("open_suggestion_modal")
+        .setLabel("Send Suggestion")
+        .setEmoji("📮")
+        .setStyle(ButtonStyle.Primary)
+    );
+
+    const PANEL_ID = process.env.SUGGESTION_PANEL_ID;
+    let msg = null;
+
+    if (PANEL_ID) {
+      try {
+        msg = await channel.messages.fetch(PANEL_ID);
+
+        await msg.edit({
+          embeds: [embed],
+          components: [row]
+        });
+
+        console.log("📮 Suggestion panel UPDATED (always visible)");
+      } catch (err) {
+        console.log("📮 No suggestion panel found → creating new one");
+      }
+    }
+
+    if (!msg) {
+      msg = await channel.send({
         embeds: [embed],
         components: [row]
       });
 
-      console.log("📮 Suggestion panel UPDATED (always visible)");
-      return;
+      console.log("SAVE THIS SUGGESTION_PANEL_ID:", msg.id);
+    }
+
+    if (!msg.pinned) {
+      await msg.pin().catch(() => {});
     }
   } catch (err) {
-    console.log("📮 No panel found → creating new one");
+    console.error('Suggestion panel setup failed:', err);
   }
 
-  msg = await channel.send({
-    embeds: [embed],
-    components: [row]
-  });
-
-  console.log("SAVE THIS ID:", msg.id);
-
- if (!PANEL_ID || !msg.pinned) {
-  await msg.pin().catch(() => {});
-}
+  // Recruitment panel
+  try {
+    await setupRecruitmentPanel();
+  } catch (err) {
+    console.error('Recruitment panel setup failed:', err);
+  }
 });
 
 // weekly reminder
