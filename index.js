@@ -73,7 +73,6 @@ function isRecruitmentOfficer(interaction) {
 
 function buildRecruitmentPanel() {
   const embed = new EmbedBuilder()
-    .setTitle('🌊 West Coast Recruitment')
     .setDescription(
 `Hello! Thank you for your interest in joining West Coast 🍁
 
