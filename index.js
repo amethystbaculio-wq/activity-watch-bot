@@ -989,7 +989,13 @@ if (interaction.isButton() && interaction.customId.startsWith('app:')) {
     });
 
     return client.users.fetch(app.userId)
-      .then(user => user.send('Congratulations! Your application to West Coast has been accepted. An officer will contact you soon.'))
+      .then(user => user.send(
+`✅ **Application Accepted!**
+
+Welcome to **West Coast** 🍁
+
+Feel free to join conversations, raids, and guild activities.`
+))
       .catch(() => interaction.followUp({ content: 'Could not DM the applicant.', ephemeral: true }));
   }
 
@@ -1923,9 +1929,13 @@ client.on('messageCreate', async message => {
       app.threadId = thread.id;
 
       const appMessage = await thread.send({
-        embeds: [buildApplicationEmbed(app)],
-        components: buildApplicationButtons(app)
-      });
+  content: `<@&${RECRUITMENT_OFFICER_ROLE_ID}> New guild application submitted.`,
+  embeds: [buildApplicationEmbed(app)],
+  components: buildApplicationButtons(app),
+  allowedMentions: {
+    roles: [RECRUITMENT_OFFICER_ROLE_ID]
+  }
+});
 
       app.messageId = appMessage.id;
       applications.set(app.appId, app);
