@@ -862,10 +862,13 @@ client.on('interactionCreate', async interaction => {
 // ==============================
 
 if (interaction.isButton() && interaction.customId === 'recruitment_apply') {
+  await interaction.deferReply({ ephemeral: true });
+
   dmApplications.set(interaction.user.id, {
     step: 'ign',
     userId: interaction.user.id,
     username: interaction.user.tag,
+    guildId: interaction.guild.id,
     ign: null,
     location: null,
     activeTime: null,
@@ -873,7 +876,7 @@ if (interaction.isButton() && interaction.customId === 'recruitment_apply') {
     playStyle: null
   });
 
-await addRoleToMember(interaction.guild, interaction.user.id, APPLICANT_ROLE_ID);
+  await addRoleToMember(interaction.guild, interaction.user.id, APPLICANT_ROLE_ID);
 
   try {
     await interaction.user.send(
@@ -885,16 +888,14 @@ Let's start your application.
 Enter your **Main Character IGN**.`
     );
 
-    return interaction.reply({
-      content: '📩 I sent you a DM with the application questions.',
-      ephemeral: true
+    return interaction.editReply({
+      content: '📩 I sent you a DM with the application questions.'
     });
   } catch (err) {
     dmApplications.delete(interaction.user.id);
 
-    return interaction.reply({
-      content: 'I could not DM you. Please enable DMs from server members, then click Apply again.',
-      ephemeral: true
+    return interaction.editReply({
+      content: 'I could not DM you. Please enable DMs from server members, then click Apply again.'
     });
   }
 }
@@ -1050,7 +1051,8 @@ Feel free to join conversations, raids, and guild activities.`
     ephemeral: true
   }));
 
-const guild = await client.guilds.fetch(app.guildId);
+const guild = client.guilds.cache.get(app.guildId) || await client.guilds.fetch(app.guildId);
+
 await addRoleToMember(guild, app.userId, ACCEPTED_ROLE_ID);
 await removeRoleFromMember(guild, app.userId, APPLICANT_ROLE_ID);
 
