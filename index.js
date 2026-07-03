@@ -42,6 +42,8 @@ const CHANNEL_ID = process.env.CHANNEL_ID;
 
 const LOOT_CATEGORY_ID = process.env.LOOT_CATEGORY_ID;
 
+const ENABLE_GAME_FEED = false;
+
 // ==============================
 // WEST COAST RECRUITMENT SYSTEM
 // ==============================
@@ -478,6 +480,7 @@ const parties = new Map();
 const pendingPartyConfigs = new Map();
 
 client.on('presenceUpdate', async (oldPresence, newPresence) => {
+if (!ENABLE_GAME_FEED) return;
   if (!newPresence || !newPresence.activities) return;
 
   const member = newPresence.member;
