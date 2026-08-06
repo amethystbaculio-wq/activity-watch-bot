@@ -592,42 +592,6 @@ DPS: —
 Created by: ${message.author}`
     );
 
-  const buttons = new ActionRowBuilder()
-    .addComponents(
-      new ButtonBuilder()
-        .setCustomId('join_tank')
-        .setLabel('Join as Tank')
-        .setStyle(ButtonStyle.Primary),
-
-      new ButtonBuilder()
-        .setCustomId('join_healer')
-        .setLabel('Join as Healer')
-        .setStyle(ButtonStyle.Success),
-
-      new ButtonBuilder()
-        .setCustomId('join_dps')
-        .setLabel('Join as DPS')
-        .setStyle(ButtonStyle.Secondary)
-    );
-
-  const controls = new ActionRowBuilder()
-    .addComponents(
-      new ButtonBuilder()
-        .setCustomId('leave_party')
-        .setLabel('Leave')
-        .setStyle(ButtonStyle.Secondary),
-
-      new ButtonBuilder()
-        .setCustomId('party_full')
-        .setLabel('Full')
-        .setStyle(ButtonStyle.Danger),
-
-      new ButtonBuilder()
-        .setCustomId('party_delete')
-        .setLabel('Delete')
-        .setStyle(ButtonStyle.Danger)
-    );
-
   const sent = await message.channel.send({
     embeds: [embed],
     components: buildPartyButtons({ full: false })
@@ -1716,6 +1680,8 @@ return interaction.reply({
   components,
   ephemeral: true
 });
+}
+
 if (interaction.customId.startsWith("custom_page_")) {
 
     const parts = interaction.customId.split("_");
@@ -1775,6 +1741,7 @@ if (interaction.customId.startsWith("custom_page_")) {
         components: rows
     });
 }
+
 if (interaction.customId === 'custom_leave') {
   await interaction.deferReply({ ephemeral: true });
 
@@ -1898,6 +1865,23 @@ if (interaction.customId === 'custom_delete') {
 
   return interaction.message.delete();
 }
+
+  if (interaction.customId === 'join_tank') {
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId(`select_tank_${interaction.message.id}`)
+      .setPlaceholder('Select your Tank class')
+      .addOptions(
+        { label: 'Crusader', value: 'Crusader' },
+        { label: 'Destroyer', value: 'Destroyer' },
+        { label: 'Guardian', value: 'Guardian' }
+      );
+
+    return interaction.reply({
+      content: 'Select your Tank class:',
+      components: [new ActionRowBuilder().addComponents(menu)],
+      ephemeral: true
+    });
+  }
 
   if (interaction.customId === 'join_healer') {
     const menu = new StringSelectMenuBuilder()
