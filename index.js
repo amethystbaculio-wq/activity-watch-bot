@@ -1619,8 +1619,9 @@ const customRoleClasses = {
   forceuser: ['Majesty', 'Smasher'],
   ice: ['Adept', 'Elestra'],
   archer: ['Artillery', 'Sniper', 'Tempest', 'Windwalker'],
-  dps: ['Adept', 'Artillery', 'Barbarian', 'Blade Dancer', 'Crusader', 'Dark Avenger', 'Dark Summoner', 'Destroyer', 'Elestra', 'Gear Master', 'Gladiator', 'Guardian', 'Inquisitor', 'Majesty', 'Moonlord', 'Physician', 'Saint', 'Saleana', 'Shooting Star', 'Smasher', 'Sniper', 'Soul Eater', 'Spirit Dancer', 'Tempest', 'Windwalker'],
+  dps: ['Abyss Walker', 'Adept', 'Artillery', 'Barbarian', 'Blade Dancer', 'Crusader', 'Dark Avenger', 'Dark Summoner', 'Destroyer', 'Elestra', 'Gear Master', 'Gladiator', 'Guardian', 'Inquisitor', 'Light Fury', 'Majesty', 'Moonlord', 'Physician', 'Raven', 'Ripper', 'Saint', 'Saleana', 'Shooting Star', 'Smasher', 'Sniper', 'Soul Eater', 'Spirit Dancer', 'Tempest', 'Windwalker'],
 member: [
+  'Abyss Walker',
   'Adept',
   'Artillery',
   'Barbarian',
@@ -1634,9 +1635,12 @@ member: [
   'Gladiator',
   'Guardian',
   'Inquisitor',
+  'Light Fury',
   'Majesty',
   'Moonlord',
   'Physician',
+  'Raven',
+  'Ripper'
   'Saint',
   'Saleana',
   'Shooting Star',
@@ -1841,6 +1845,7 @@ if (interaction.customId === 'custom_delete') {
       .setCustomId(`select_dps_${interaction.message.id}`)
       .setPlaceholder('Select your DPS class')
       .addOptions(
+        { label: 'Abyss Walker', value: 'Abyss Walker' },
         { label: 'Adept', value: 'Adept' },
         { label: 'Artillery', value: 'Artillery' },
         { label: 'Barbarian', value: 'Barbarian' },
@@ -1854,9 +1859,12 @@ if (interaction.customId === 'custom_delete') {
         { label: 'Gladiator', value: 'Gladiator' },
         { label: 'Guardian', value: 'Guardian' },
         { label: 'Inquisitor', value: 'Inquisitor' },
+        { label: 'Light Fury', value: 'Light Fury' },
         { label: 'Majesty', value: 'Majesty' },
         { label: 'Moonlord', value: 'Moonlord' },
         { label: 'Physician', value: 'Physician' },
+        { label: 'Raven', value: 'Raven' },
+        { label: 'Ripper', value: 'Ripper' },
         { label: 'Saint', value: 'Saint' },
         { label: 'Saleana', value: 'Saleana' },
         { label: 'Shooting Star', value: 'Shooting Star' },
