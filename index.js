@@ -1841,48 +1841,72 @@ if (interaction.customId === 'custom_delete') {
     });
   }
 
-  if (interaction.customId === 'join_dps') {
+if (interaction.customId === 'join_dps') {
+
     const menu = new StringSelectMenuBuilder()
-      .setCustomId(`select_dps_${interaction.message.id}`)
-      .setPlaceholder('Select your DPS class')
-      .addOptions(
-        { label: 'Abyss Walker', value: 'Abyss Walker' },
-        { label: 'Adept', value: 'Adept' },
-        { label: 'Artillery', value: 'Artillery' },
-        { label: 'Barbarian', value: 'Barbarian' },
-        { label: 'Blade Dancer', value: 'Blade Dancer' },
-        { label: 'Crusader', value: 'Crusader' },
-        { label: 'Dark Avenger', value: 'Dark Avenger' },
-        { label: 'Dark Summoner', value: 'Dark Summoner' },
-        { label: 'Destroyer', value: 'Destroyer' },
-        { label: 'Elestra', value: 'Elestra' },
-        { label: 'Gear Master', value: 'Gear Master' },
-        { label: 'Gladiator', value: 'Gladiator' },
-        { label: 'Guardian', value: 'Guardian' },
-        { label: 'Inquisitor', value: 'Inquisitor' },
-        { label: 'Light Fury', value: 'Light Fury' },
-        { label: 'Majesty', value: 'Majesty' },
-        { label: 'Moonlord', value: 'Moonlord' },
-        { label: 'Physician', value: 'Physician' },
-        { label: 'Raven', value: 'Raven' },
-        { label: 'Ripper', value: 'Ripper' },
-        { label: 'Saint', value: 'Saint' },
-        { label: 'Saleana', value: 'Saleana' },
-        { label: 'Shooting Star', value: 'Shooting Star' },
-        { label: 'Smasher', value: 'Smasher' },
-        { label: 'Sniper', value: 'Sniper' },
-        { label: 'Soul Eater', value: 'Soul Eater' },
-        { label: 'Spirit Dancer', value: 'Spirit Dancer' },
-        { label: 'Tempest', value: 'Tempest' },
-        { label: 'Windwalker', value: 'Windwalker' }
-      );
+        .setCustomId(`select_dps_${interaction.message.id}`)
+        .setPlaceholder('Select your DPS class (1/2)')
+        .addOptions(
+            { label: 'Abyss Walker', value: 'Abyss Walker' },
+            { label: 'Adept', value: 'Adept' },
+            { label: 'Artillery', value: 'Artillery' },
+            { label: 'Barbarian', value: 'Barbarian' },
+            { label: 'Blade Dancer', value: 'Blade Dancer' },
+            { label: 'Crusader', value: 'Crusader' },
+            { label: 'Dark Avenger', value: 'Dark Avenger' },
+            { label: 'Dark Summoner', value: 'Dark Summoner' },
+            { label: 'Destroyer', value: 'Destroyer' },
+            { label: 'Elestra', value: 'Elestra' },
+            { label: 'Gear Master', value: 'Gear Master' },
+            { label: 'Gladiator', value: 'Gladiator' },
+            { label: 'Guardian', value: 'Guardian' },
+            { label: 'Inquisitor', value: 'Inquisitor' },
+            { label: 'Light Fury', value: 'Light Fury' },
+            { label: 'Majesty', value: 'Majesty' },
+            { label: 'Moonlord', value: 'Moonlord' },
+            { label: 'Physician', value: 'Physician' },
+            { label: 'Raven', value: 'Raven' },
+            { label: 'Ripper', value: 'Ripper' },
+            { label: 'Saint', value: 'Saint' },
+            { label: 'Saleana', value: 'Saleana' },
+            { label: 'Shooting Star', value: 'Shooting Star' },
+            { label: 'Smasher', value: 'Smasher' },
+            { label: 'Sniper', value: 'Sniper' }
+        );
+
+    const nextButton = new ButtonBuilder()
+        .setCustomId(`join_dps_page2_${interaction.message.id}`)
+        .setLabel('More Classes ▶')
+        .setStyle(ButtonStyle.Primary);
 
     return interaction.reply({
-      content: 'Select your DPS class:',
-      components: [new ActionRowBuilder().addComponents(menu)],
-      ephemeral: true
+        ephemeral: true,
+        components: [
+            new ActionRowBuilder().addComponents(menu),
+            new ActionRowBuilder().addComponents(nextButton)
+        ]
     });
-  }
+}
+if (interaction.customId.startsWith('join_dps_page2_')) {
+
+    const messageId = interaction.customId.replace('join_dps_page2_', '');
+
+    const menu = new StringSelectMenuBuilder()
+        .setCustomId(`select_dps_${messageId}`)
+        .setPlaceholder('Select your DPS class (2/2)')
+        .addOptions(
+            { label: 'Soul Eater', value: 'Soul Eater' },
+            { label: 'Spirit Dancer', value: 'Spirit Dancer' },
+            { label: 'Tempest', value: 'Tempest' },
+            { label: 'Windwalker', value: 'Windwalker' }
+        );
+
+    return interaction.update({
+        components: [
+            new ActionRowBuilder().addComponents(menu)
+        ]
+    });
+}
 
 if (interaction.customId === 'leave_party') {
   await interaction.deferReply({ ephemeral: true });
