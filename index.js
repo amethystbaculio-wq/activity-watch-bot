@@ -853,6 +853,7 @@ new ButtonBuilder()
 }
 
 client.on('interactionCreate', async interaction => {
+   console.log("Interaction received:", interaction.customId);
   if (
   !interaction.isButton() &&
   !interaction.isStringSelectMenu() &&
