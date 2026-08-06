@@ -1640,7 +1640,7 @@ member: [
   'Moonlord',
   'Physician',
   'Raven',
-  'Ripper'
+  'Ripper',
   'Saint',
   'Saleana',
   'Shooting Star',
