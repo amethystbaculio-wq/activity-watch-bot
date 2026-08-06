@@ -1683,15 +1683,15 @@ if (interaction.customId.startsWith('custom_join_')) {
   });
 }
 
-  const menu = new StringSelectMenuBuilder()
-    .setCustomId(`custom_select_${role}_${interaction.message.id}`)
-    .setPlaceholder(`Select your ${roleLabels[role]} class`)
-    .addOptions(
-      classes.map(className => ({
-        label: className,
-        value: className
-      }))
-    );
+const menu = new StringSelectMenuBuilder()
+  .setCustomId(`custom_select_${role}_${interaction.message.id}`)
+  .setPlaceholder(`Select your ${roleLabels[role]} class`)
+  .addOptions(
+    classes.slice(0, 25).map(className => ({
+      label: className,
+      value: className
+    }))
+  );
 
   return interaction.reply({
     content: `Select your ${roleLabels[role]} class:`,
