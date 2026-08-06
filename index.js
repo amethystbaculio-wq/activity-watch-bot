@@ -687,6 +687,47 @@ const roleLabels = {
   member: 'Member'
 };
 
+const customRoleClasses = {
+  healer: ['Inquisitor', 'Physician', 'Saint'],
+  mercenary: ['Barbarian', 'Destroyer'],
+  swordmaster: ['Gladiator', 'Moonlord'],
+  forceuser: ['Majesty', 'Smasher'],
+  ice: ['Adept', 'Elestra'],
+  archer: ['Artillery', 'Sniper', 'Tempest', 'Windwalker'],
+  dps: ['Abyss Walker', 'Adept', 'Artillery', 'Barbarian', 'Blade Dancer', 'Crusader', 'Dark Avenger', 'Dark Summoner', 'Destroyer', 'Elestra', 'Gear Master', 'Gladiator', 'Guardian', 'Inquisitor', 'Light Fury', 'Majesty', 'Moonlord', 'Physician', 'Raven', 'Ripper', 'Saint', 'Saleana', 'Shooting Star', 'Smasher', 'Sniper', 'Soul Eater', 'Spirit Dancer', 'Tempest', 'Windwalker'],
+  member: [
+    'Abyss Walker',
+    'Adept',
+    'Artillery',
+    'Barbarian',
+    'Blade Dancer',
+    'Crusader',
+    'Dark Avenger',
+    'Dark Summoner',
+    'Destroyer',
+    'Elestra',
+    'Gear Master',
+    'Gladiator',
+    'Guardian',
+    'Inquisitor',
+    'Light Fury',
+    'Majesty',
+    'Moonlord',
+    'Physician',
+    'Raven',
+    'Ripper',
+    'Saint',
+    'Saleana',
+    'Shooting Star',
+    'Smasher',
+    'Sniper',
+    'Soul Eater',
+    'Spirit Dancer',
+    'Tempest',
+    'Windwalker'
+  ]
+};
+
 function buildConfiguredParty(title, creatorId, size, selectedRoles) {
   const slots = [];
 
@@ -1569,6 +1610,91 @@ if (interaction.customId === 'config_skip_roles') {
   });
 }
 
+// These two handlers operate on the *ephemeral* class-select reply message
+// (not the original party embed), so they must run before the party lookup
+// below — interaction.message.id here would be the ephemeral message's id,
+// which is never stored in the `parties` map.
+if (interaction.customId.startsWith("custom_page_")) {
+
+    const parts = interaction.customId.split("_");
+
+    const role = parts[2];
+    const messageId = parts[3];
+    const page = Number(parts[4]);
+
+    const classes = customRoleClasses[role];
+
+    const pageSize = 25;
+    const totalPages = Math.ceil(classes.length / pageSize);
+
+    const menu = new StringSelectMenuBuilder()
+        .setCustomId(`custom_select_${role}_${messageId}`)
+        .setPlaceholder(`Select your ${roleLabels[role]} class (${page + 1}/${totalPages})`)
+        .addOptions(
+            classes
+                .slice(page * pageSize, (page + 1) * pageSize)
+                .map(c => ({
+                    label: c,
+                    value: c
+                }))
+        );
+
+    const buttons = [];
+
+    if (page > 0) {
+        buttons.push(
+            new ButtonBuilder()
+                .setCustomId(`custom_page_${role}_${messageId}_${page - 1}`)
+                .setLabel("◀ Previous")
+                .setStyle(ButtonStyle.Secondary)
+        );
+    }
+
+    if (page < totalPages - 1) {
+        buttons.push(
+            new ButtonBuilder()
+                .setCustomId(`custom_page_${role}_${messageId}_${page + 1}`)
+                .setLabel("Next ▶")
+                .setStyle(ButtonStyle.Primary)
+        );
+    }
+
+    const rows = [
+        new ActionRowBuilder().addComponents(menu)
+    ];
+
+    if (buttons.length) {
+        rows.push(
+            new ActionRowBuilder().addComponents(buttons)
+        );
+    }
+
+    return interaction.update({
+        components: rows
+    });
+}
+
+if (interaction.customId.startsWith('join_dps_page2_')) {
+
+    const messageId = interaction.customId.replace('join_dps_page2_', '');
+
+    const menu = new StringSelectMenuBuilder()
+        .setCustomId(`select_dps_${messageId}`)
+        .setPlaceholder('Select your DPS class (2/2)')
+        .addOptions(
+            { label: 'Soul Eater', value: 'Soul Eater' },
+            { label: 'Spirit Dancer', value: 'Spirit Dancer' },
+            { label: 'Tempest', value: 'Tempest' },
+            { label: 'Windwalker', value: 'Windwalker' }
+        );
+
+    return interaction.update({
+        components: [
+            new ActionRowBuilder().addComponents(menu)
+        ]
+    });
+}
+
   const party = parties.get(interaction.message.id);
 if (!party) {
   return interaction.reply({
@@ -1576,47 +1702,6 @@ if (!party) {
     ephemeral: true
   });
 }
-
-const customRoleClasses = {
-  healer: ['Inquisitor', 'Physician', 'Saint'],
-  mercenary: ['Barbarian', 'Destroyer'],
-  swordmaster: ['Gladiator', 'Moonlord'],
-  forceuser: ['Majesty', 'Smasher'],
-  ice: ['Adept', 'Elestra'],
-  archer: ['Artillery', 'Sniper', 'Tempest', 'Windwalker'],
-  dps: ['Abyss Walker', 'Adept', 'Artillery', 'Barbarian', 'Blade Dancer', 'Crusader', 'Dark Avenger', 'Dark Summoner', 'Destroyer', 'Elestra', 'Gear Master', 'Gladiator', 'Guardian', 'Inquisitor', 'Light Fury', 'Majesty', 'Moonlord', 'Physician', 'Raven', 'Ripper', 'Saint', 'Saleana', 'Shooting Star', 'Smasher', 'Sniper', 'Soul Eater', 'Spirit Dancer', 'Tempest', 'Windwalker'],
-member: [
-  'Abyss Walker',
-  'Adept',
-  'Artillery',
-  'Barbarian',
-  'Blade Dancer',
-  'Crusader',
-  'Dark Avenger',
-  'Dark Summoner',
-  'Destroyer',
-  'Elestra',
-  'Gear Master',
-  'Gladiator',
-  'Guardian',
-  'Inquisitor',
-  'Light Fury',
-  'Majesty',
-  'Moonlord',
-  'Physician',
-  'Raven',
-  'Ripper',
-  'Saint',
-  'Saleana',
-  'Shooting Star',
-  'Smasher',
-  'Sniper',
-  'Soul Eater',
-  'Spirit Dancer',
-  'Tempest',
-  'Windwalker'
-]
-};
 
 if (interaction.customId.startsWith('custom_join_')) {
   const role = interaction.customId.replace('custom_join_', '');
@@ -1680,66 +1765,6 @@ return interaction.reply({
   components,
   ephemeral: true
 });
-}
-
-if (interaction.customId.startsWith("custom_page_")) {
-
-    const parts = interaction.customId.split("_");
-
-    const role = parts[2];
-    const messageId = parts[3];
-    const page = Number(parts[4]);
-
-    const classes = customRoleClasses[role];
-
-    const pageSize = 25;
-    const totalPages = Math.ceil(classes.length / pageSize);
-
-    const menu = new StringSelectMenuBuilder()
-        .setCustomId(`custom_select_${role}_${messageId}`)
-        .setPlaceholder(`Select your ${roleLabels[role]} class (${page + 1}/${totalPages})`)
-        .addOptions(
-            classes
-                .slice(page * pageSize, (page + 1) * pageSize)
-                .map(c => ({
-                    label: c,
-                    value: c
-                }))
-        );
-
-    const buttons = [];
-
-    if (page > 0) {
-        buttons.push(
-            new ButtonBuilder()
-                .setCustomId(`custom_page_${role}_${messageId}_${page - 1}`)
-                .setLabel("◀ Previous")
-                .setStyle(ButtonStyle.Secondary)
-        );
-    }
-
-    if (page < totalPages - 1) {
-        buttons.push(
-            new ButtonBuilder()
-                .setCustomId(`custom_page_${role}_${messageId}_${page + 1}`)
-                .setLabel("Next ▶")
-                .setStyle(ButtonStyle.Primary)
-        );
-    }
-
-    const rows = [
-        new ActionRowBuilder().addComponents(menu)
-    ];
-
-    if (buttons.length) {
-        rows.push(
-            new ActionRowBuilder().addComponents(buttons)
-        );
-    }
-
-    return interaction.update({
-        components: rows
-    });
 }
 
 if (interaction.customId === 'custom_leave') {
@@ -1946,27 +1971,6 @@ if (interaction.customId === 'join_dps') {
         ]
     });
 }
-if (interaction.customId.startsWith('join_dps_page2_')) {
-
-    const messageId = interaction.customId.replace('join_dps_page2_', '');
-
-    const menu = new StringSelectMenuBuilder()
-        .setCustomId(`select_dps_${messageId}`)
-        .setPlaceholder('Select your DPS class (2/2)')
-        .addOptions(
-            { label: 'Soul Eater', value: 'Soul Eater' },
-            { label: 'Spirit Dancer', value: 'Spirit Dancer' },
-            { label: 'Tempest', value: 'Tempest' },
-            { label: 'Windwalker', value: 'Windwalker' }
-        );
-
-    return interaction.update({
-        components: [
-            new ActionRowBuilder().addComponents(menu)
-        ]
-    });
-}
-
 if (interaction.customId === 'leave_party') {
   await interaction.deferReply({ ephemeral: true });
 
