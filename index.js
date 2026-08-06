@@ -1683,23 +1683,98 @@ if (interaction.customId.startsWith('custom_join_')) {
   });
 }
 
+const page = 0;
+const pageSize = 25;
+
 const menu = new StringSelectMenuBuilder()
   .setCustomId(`custom_select_${role}_${interaction.message.id}`)
-  .setPlaceholder(`Select your ${roleLabels[role]} class`)
+  .setPlaceholder(`Select your ${roleLabels[role]} class (${page + 1}/${Math.ceil(classes.length / pageSize)})`)
   .addOptions(
-    classes.slice(0, 25).map(className => ({
+    classes.slice(0, pageSize).map(className => ({
       label: className,
       value: className
     }))
   );
 
-  return interaction.reply({
-    content: `Select your ${roleLabels[role]} class:`,
-    components: [new ActionRowBuilder().addComponents(menu)],
-    ephemeral: true
-  });
+const components = [
+  new ActionRowBuilder().addComponents(menu)
+];
+
+if (classes.length > pageSize) {
+  components.push(
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`custom_page_${role}_${interaction.message.id}_1`)
+        .setLabel("Next ▶")
+        .setStyle(ButtonStyle.Primary)
+    )
+  );
 }
 
+return interaction.reply({
+  content: `Select your ${roleLabels[role]} class:`,
+  components,
+  ephemeral: true
+});
+if (interaction.customId.startsWith("custom_page_")) {
+
+    const parts = interaction.customId.split("_");
+
+    const role = parts[2];
+    const messageId = parts[3];
+    const page = Number(parts[4]);
+
+    const classes = customRoleClasses[role];
+
+    const pageSize = 25;
+    const totalPages = Math.ceil(classes.length / pageSize);
+
+    const menu = new StringSelectMenuBuilder()
+        .setCustomId(`custom_select_${role}_${messageId}`)
+        .setPlaceholder(`Select your ${roleLabels[role]} class (${page + 1}/${totalPages})`)
+        .addOptions(
+            classes
+                .slice(page * pageSize, (page + 1) * pageSize)
+                .map(c => ({
+                    label: c,
+                    value: c
+                }))
+        );
+
+    const buttons = [];
+
+    if (page > 0) {
+        buttons.push(
+            new ButtonBuilder()
+                .setCustomId(`custom_page_${role}_${messageId}_${page - 1}`)
+                .setLabel("◀ Previous")
+                .setStyle(ButtonStyle.Secondary)
+        );
+    }
+
+    if (page < totalPages - 1) {
+        buttons.push(
+            new ButtonBuilder()
+                .setCustomId(`custom_page_${role}_${messageId}_${page + 1}`)
+                .setLabel("Next ▶")
+                .setStyle(ButtonStyle.Primary)
+        );
+    }
+
+    const rows = [
+        new ActionRowBuilder().addComponents(menu)
+    ];
+
+    if (buttons.length) {
+        rows.push(
+            new ActionRowBuilder().addComponents(buttons)
+        );
+    }
+
+    return interaction.update({
+        components: rows
+    });
+}
 if (interaction.customId === 'custom_leave') {
   await interaction.deferReply({ ephemeral: true });
 
