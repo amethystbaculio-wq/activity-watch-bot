@@ -2339,7 +2339,24 @@ console.log(
   'length:',
   process.env.DISCORD_TOKEN?.length
 );
+const https = require('https');
 
+https.get('https://discord.com/api/v10/gateway', (res) => {
+  console.log(`🌐 Discord API status: ${res.statusCode}`);
+
+  res.on('data', () => {});
+  res.on('end', () => {
+    console.log('🌐 Discord API connection completed');
+  });
+}).on('error', (error) => {
+  console.error('❌ Cannot reach Discord API:', error.message);
+});
+
+console.log('🚀 About to login to Discord...');
+
+client.login(process.env.DISCORD_TOKEN)
+  .then(() => console.log('🔑 Discord login successful'))
+  .catch((error) => console.error('❌ Discord login failed:', error));
 console.log('🚀 About to login to Discord...');
 
 client.login(process.env.DISCORD_TOKEN)
