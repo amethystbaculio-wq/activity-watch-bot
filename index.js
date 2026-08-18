@@ -2311,4 +2311,10 @@ cron.schedule('0 22 * * 5', async () => {
 
 
 
-client.login(process.env.DISCORD_TOKEN);
+client.once('ready', () => {
+  console.log(`✅ West Coast bot is online as ${client.user.tag}`);
+});
+
+client.login(process.env.DISCORD_TOKEN)
+  .then(() => console.log('🔑 Discord login successful'))
+  .catch(err => console.error('❌ Discord login failed:', err));
