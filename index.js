@@ -1,5 +1,14 @@
 require('dotenv').config();
 
+// SAFETY NET: prevent unhandled errors from crashing the whole bot
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('⚠️ Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('⚠️ Uncaught Exception:', err);
+});
+
 const express = require('express');
 const app = express();
 
@@ -858,6 +867,7 @@ new ButtonBuilder()
 }
 
 client.on('interactionCreate', async interaction => {
+  try {
    console.log("Interaction received:", interaction.customId);
   if (
   !interaction.isButton() &&
@@ -2025,6 +2035,17 @@ if (interaction.customId === 'party_delete') {
 
   await interaction.message.delete();
 }
+
+  } catch (err) {
+    console.error('❌ Error in interactionCreate:', err);
+    try {
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({ content: '⚠️ Something went wrong. Please try again.' });
+      } else {
+        await interaction.reply({ content: '⚠️ Something went wrong. Please try again.', ephemeral: true });
+      }
+    } catch (_) { /* ignore secondary errors */ }
+  }
 });
 
 
