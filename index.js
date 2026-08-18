@@ -2314,7 +2314,25 @@ cron.schedule('0 22 * * 5', async () => {
 client.once('ready', () => {
   console.log(`✅ West Coast bot is online as ${client.user.tag}`);
 });
+client.on('debug', (message) => {
+  console.log('🐛 DISCORD DEBUG:', message);
+});
 
+client.on('warn', (message) => {
+  console.warn('⚠️ DISCORD WARNING:', message);
+});
+
+client.on('error', (error) => {
+  console.error('❌ DISCORD ERROR:', error);
+});
+
+client.on('shardError', (error) => {
+  console.error('❌ SHARD ERROR:', error);
+});
+
+client.on('shardReady', (id) => {
+  console.log(`✅ SHARD ${id} READY`);
+});
 console.log(
   '🔐 DISCORD_TOKEN exists:',
   !!process.env.DISCORD_TOKEN,
