@@ -2342,11 +2342,8 @@ console.log(
   process.env.DISCORD_TOKEN?.length
 );
 
-
-
 console.log('🚀 About to login to Discord...');
 
-// ONLY ONE client.login()
 client.login(process.env.DISCORD_TOKEN)
   .then(() => {
     console.log('🔑 Discord login successful');
