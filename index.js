@@ -2317,4 +2317,4 @@ client.once('ready', () => {
 
 client.login(process.env.DISCORD_TOKEN)
   .then(() => console.log('🔑 Discord login successful'))
-  .catch(err => console.error('❌ Discord login failed:', err));
+  .catch(error => console.error('❌ Discord login failed:', error));
