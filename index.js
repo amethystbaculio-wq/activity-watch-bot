@@ -2317,6 +2317,16 @@ client.once('ready', () => {
 
 console.log('🚀 About to login to Discord...');
 
-client.login(process.env.DISCORD_TOKEN)
-  .then(() => console.log('🔑 Discord login successful'))
-  .catch(error => console.error('❌ Discord login failed:', error));
+const loginPromise = client.login(process.env.DISCORD_TOKEN);
+
+loginPromise
+  .then(() => {
+    console.log('🔑 Discord login successful');
+  })
+  .catch((error) => {
+    console.error('❌ Discord login failed:', error);
+  });
+
+setTimeout(() => {
+  console.log('⏰ 30 seconds passed — Discord login still has not completed.');
+}, 30000);
