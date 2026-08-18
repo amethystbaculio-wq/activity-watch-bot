@@ -2315,6 +2315,8 @@ client.once('ready', () => {
   console.log(`✅ West Coast bot is online as ${client.user.tag}`);
 });
 
+console.log('🚀 About to login to Discord...');
+
 client.login(process.env.DISCORD_TOKEN)
   .then(() => console.log('🔑 Discord login successful'))
   .catch(error => console.error('❌ Discord login failed:', error));
