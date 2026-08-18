@@ -2314,6 +2314,7 @@ cron.schedule('0 22 * * 5', async () => {
 client.once('ready', () => {
   console.log(`✅ West Coast bot is online as ${client.user.tag}`);
 });
+
 client.on('debug', (message) => {
   console.log('🐛 DISCORD DEBUG:', message);
 });
@@ -2333,18 +2334,21 @@ client.on('shardError', (error) => {
 client.on('shardReady', (id) => {
   console.log(`✅ SHARD ${id} READY`);
 });
+
 console.log(
   '🔐 DISCORD_TOKEN exists:',
   !!process.env.DISCORD_TOKEN,
   'length:',
   process.env.DISCORD_TOKEN?.length
 );
+
 const https = require('https');
 
 https.get('https://discord.com/api/v10/gateway', (res) => {
   console.log(`🌐 Discord API status: ${res.statusCode}`);
 
   res.on('data', () => {});
+  
   res.on('end', () => {
     console.log('🌐 Discord API connection completed');
   });
@@ -2354,11 +2358,7 @@ https.get('https://discord.com/api/v10/gateway', (res) => {
 
 console.log('🚀 About to login to Discord...');
 
-client.login(process.env.DISCORD_TOKEN)
-  .then(() => console.log('🔑 Discord login successful'))
-  .catch((error) => console.error('❌ Discord login failed:', error));
-console.log('🚀 About to login to Discord...');
-
+// ONLY ONE client.login()
 client.login(process.env.DISCORD_TOKEN)
   .then(() => {
     console.log('🔑 Discord login successful');
@@ -2366,14 +2366,6 @@ client.login(process.env.DISCORD_TOKEN)
   .catch((error) => {
     console.error('❌ Discord login failed:', error);
   });
-
-client.on('error', (error) => {
-  console.error('❌ Discord client error:', error);
-});
-
-client.on('shardError', (error) => {
-  console.error('❌ Discord shard error:', error);
-});
 
 setTimeout(() => {
   console.log('⏰ 30 seconds passed — Discord login still has not completed.');
