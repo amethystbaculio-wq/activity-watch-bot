@@ -2315,17 +2315,30 @@ client.once('ready', () => {
   console.log(`✅ West Coast bot is online as ${client.user.tag}`);
 });
 
+console.log(
+  '🔐 DISCORD_TOKEN exists:',
+  !!process.env.DISCORD_TOKEN,
+  'length:',
+  process.env.DISCORD_TOKEN?.length
+);
+
 console.log('🚀 About to login to Discord...');
 
-const loginPromise = client.login(process.env.DISCORD_TOKEN);
-
-loginPromise
+client.login(process.env.DISCORD_TOKEN)
   .then(() => {
     console.log('🔑 Discord login successful');
   })
   .catch((error) => {
     console.error('❌ Discord login failed:', error);
   });
+
+client.on('error', (error) => {
+  console.error('❌ Discord client error:', error);
+});
+
+client.on('shardError', (error) => {
+  console.error('❌ Discord shard error:', error);
+});
 
 setTimeout(() => {
   console.log('⏰ 30 seconds passed — Discord login still has not completed.');
