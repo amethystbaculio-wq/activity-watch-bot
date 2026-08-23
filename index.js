@@ -2089,16 +2089,66 @@ client.on('messageCreate', async message => {
       });
     }
 
-    if (form.step === 'statsGear') {
-      if (!message.attachments.size) {
-        return message.reply('Please upload an image of your stats and gears as an attachment.');
+  if (form.step === 'statsGear') {
+
+  console.log('📸 Question 6 message received');
+  console.log('   User:', message.author.tag);
+  console.log('   Attachments:', message.attachments.size);
+  console.log(
+    '   Attachment details:',
+    [...message.attachments.values()].map(file => ({
+      name: file.name,
+      url: file.url,
+      contentType: file.contentType
+    }))
+  );
+  console.log('   Message content:', message.content);
+
+  // Get all uploaded attachments
+  const attachments = [...message.attachments.values()];
+
+  // Accept image attachments
+  const imageAttachments = attachments.filter(file => {
+    const contentType = file.contentType || '';
+    const fileName = file.name || '';
+
+    return (
+      contentType.startsWith('image/') ||
+      /\.(png|jpg|jpeg|gif|webp)$/i.test(fileName)
+    );
+  });
+
+  // Also accept image URLs pasted directly into the DM
+  const urlImages = [];
+
+  if (message.content) {
+    const urls = message.content.match(
+      /https?:\/\/[^\s]+/gi
+    ) || [];
+
+    for (const url of urls) {
+      if (/\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i.test(url)) {
+        urlImages.push(url);
       }
+    }
+  }
 
-      const attachmentLinks = [...message.attachments.values()]
-        .map(file => file.url)
-        .join('\n');
+  // Combine attachment URLs + direct image URLs
+  const attachmentLinks = [
+    ...imageAttachments.map(file => file.url),
+    ...urlImages
+  ];
 
-      const appId = getNextAppId();
+  // No image found
+  if (attachmentLinks.length === 0) {
+    return message.reply(
+      '📸 Please upload an image of your **stats and gears**. You can send one or more screenshots directly in this DM.'
+    );
+  }
+
+  console.log(`✅ ${attachmentLinks.length} image(s) received.`);
+
+  const appId = getNextAppId();
 
     const app = {
   appId,
